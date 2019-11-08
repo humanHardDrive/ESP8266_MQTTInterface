@@ -2,6 +2,7 @@
 #include <PubSubClient.h>
 
 #include "SerialInterface.h"
+#include "NetworkHelper.h"
 
 #define MAX_NAME_LENGTH 32
 
