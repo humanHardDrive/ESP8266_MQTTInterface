@@ -23,10 +23,8 @@ void SerialInterface::update(uint8_t c)
   m_StateFn[m_ParseState](c);
 }
 
-void SerialInterface::setCommandHandler(char c1, char c2, std::function<void(uint8_t*, uint8_t)> fn)
+void SerialInterface::setCommandHandler(uint8_t cmd, std::function<void(uint8_t*)> fn)
 {
-  std::pair<char, char> cmd(toupper(c1), toupper(c2));
-
   m_CmdHandler[cmd] = fn;
 }
 
@@ -38,24 +36,17 @@ void SerialInterface::WaitingForSTXState(uint8_t c)
 
     //Reset the current command code and the number of
     //bytes received
-    memset(m_CurrentCommand, 0, 2);
+    m_CurrentCommand = 
     m_CommandDataCount = 0;
     //The data buffer isn't reset because only the number of bytes
     //written is needed
   }
 }
 
-//TODO: Ensure that the character received is alpha-numeric
-//A parameter of 0 is NOT allowed
 void SerialInterface::WaitingForCMDState(uint8_t c)
 {
-  if (!m_CurrentCommand[0]) //Have we gotten the first character?
-    m_CurrentCommand[0] = toupper((char)c);
-  else if (!m_CurrentCommand[1]) //What about the second?
-  {
-    m_CurrentCommand[1] = toupper((char)c);
+    m_CurrentCommand = c;
     m_ParseState = WAITING_FOR_LEN;
-  }
 }
 
 void SerialInterface::WaitingForLenState(uint8_t c)
@@ -84,13 +75,10 @@ void SerialInterface::WaitingForETXState(uint8_t c)
 {
   if (c == SERIAL_ETX)
   {
-    //Put the array into a pair
-    std::pair<char, char> cmd(m_CurrentCommand[0], m_CurrentCommand[1]);
-
     m_ParseState = WAITING_FOR_STX;
 
     //If a handler exists for this command code, call it
-    if (m_CmdHandler.find(cmd) != m_CmdHandler.end())
-      m_CmdHandler[cmd](m_CurrentCommandBuf, m_CurrentCommandLen);
+    if (m_CmdHandler.find(m_CurrentCommand) != m_CmdHandler.end())
+      m_CmdHandler[m_CurrentCommand](m_CurrentCommandBuf);
   }
 }

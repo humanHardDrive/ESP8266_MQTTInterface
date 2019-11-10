@@ -2,6 +2,8 @@
 #include <functional>
 #include <map>
 
+#include "Msgs.h"
+
 #define SERIAL_STX  0x55
 #define SERIAL_ETX  0xAA
 
@@ -15,7 +17,7 @@ class SerialInterface
 
     void update(uint8_t c);
 
-    void setCommandHandler(char c1, char c2, std::function<void(uint8_t*, uint8_t)>);
+    void setCommandHandler(uint8_t cmd, std::function<void(uint8_t*)> fn);
 
   private:
     enum PARSE_STATE
@@ -32,7 +34,7 @@ class SerialInterface
 
     uint32_t m_LastRXTime = 0;
 
-    char m_CurrentCommand[2];
+    uint8_t m_CurrentCommand = NO_CMD;
     uint8_t m_CurrentCommandLen;
     uint8_t m_CommandDataCount;
     uint8_t m_CurrentCommandBuf[COMMAND_BUFFER_LEN];
@@ -43,9 +45,8 @@ class SerialInterface
     void WaitingForDataState(uint8_t);
     void WaitingForETXState(uint8_t);
 
-    //Function handlers for each of the 2 letter commands
     //These are configured by the caller
-    std::map<std::pair<char, char>, std::function<void(uint8_t*, uint8_t)>> m_CmdHandler;
+    std::map<uint8_t, std::function<void(uint8_t*)>> m_CmdHandler;
 
     //Function handlers for all of the serial parse states
     std::function<void(uint8_t)> m_StateFn[ALL_PARSE_STATES] =
