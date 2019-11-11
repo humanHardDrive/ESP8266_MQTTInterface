@@ -126,6 +126,22 @@ bool RecoverInfo()
   return false;
 }
 
+/*MESSAGE HANDLERS*/
+void HandleSetNetworkName(uint8_t* buf)
+{
+  strcpy(SavedInfoMirror.sNetworkName, (char*)buf);
+}
+
+void HandleSetNetworkPass(uint8_t* buf)
+{
+  strcpy(SavedInfoMirror.sNetworkPass, (char*)buf);
+}
+
+void SetupMessageHandlers()
+{
+  serInterface.setCommandHandler(SET_NETWORK_NAME, HandleSetNetworkName);
+}
+
 void setup()
 {
   delay(1000);
@@ -139,6 +155,8 @@ void setup()
   dbg.begin(115200);
 
   RecoverInfo();
+
+  SetupMessageHandlers();
 
   helper.onNetworkChange(
     [](String ssid, String password)
