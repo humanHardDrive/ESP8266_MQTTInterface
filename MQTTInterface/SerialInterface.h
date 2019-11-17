@@ -18,6 +18,7 @@ class SerialInterface
     void update(uint8_t c);
 
     void setCommandHandler(uint8_t cmd, std::function<void(uint8_t*)> fn);
+    void sendCommand(uint8_t cmd, void* buf, uint8_t len);
 
   private:
     enum PARSE_STATE

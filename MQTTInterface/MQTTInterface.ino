@@ -18,6 +18,13 @@
 #define DBG_TX_PIN  14
 #define DBG_RX_PIN  15
 
+enum
+{
+  NOT_CONNECTED = 0,
+  CONNECTED_TO_AP,
+  IS_AP
+};
+
 struct SAVE_INFO
 {
   char sNetworkName[MAX_NETWORK_NAME_LENGTH];
@@ -37,6 +44,7 @@ SerialInterface serInterface;
 SoftwareSerial dbg(DBG_TX_PIN, DBG_RX_PIN, false, 256);
 Stream& logger(dbg);
 NetworkHelper helper;
+uint8_t connectedState = NOT_CONNECTED;
 
 /*INFO FUNCTIONS*/
 uint32_t calcSavedInfoChecksum(SAVE_INFO* info)
@@ -137,9 +145,28 @@ void HandleSetNetworkPass(uint8_t* buf)
   strcpy(SavedInfoMirror.sNetworkPass, (char*)buf);
 }
 
+void HandleGetNetworkName(uint8_t* buf)
+{
+  serInterface.sendCommand(GET_NETWORK_NAME, SavedInfoMirror.sNetworkName, strlen(SavedInfoMirror.sNetworkName));
+}
+
+void HandleGetNetworkPass(uint8_t* buf)
+{
+  serInterface.sendCommand(GET_NETWORK_PASS, SavedInfoMirror.sNetworkPass, strlen(SavedInfoMirror.sNetworkPass));
+}
+
+void HandleGetDeviceName(uint8_t* buf)
+{
+  serInterface.sendCommand(GET_DEVICE_NAME, SavedInfoMirror.sDeviceName, strlen(SavedInfoMirror.sDeviceName));
+}
+
 void SetupMessageHandlers()
 {
   serInterface.setCommandHandler(SET_NETWORK_NAME, HandleSetNetworkName);
+  serInterface.setCommandHandler(SET_NETWORK_PASS, HandleSetNetworkPass);
+  serInterface.setCommandHandler(GET_NETWORK_NAME, HandleGetNetworkName);
+  serInterface.setCommandHandler(GET_NETWORK_PASS, HandleGetNetworkPass);
+  serInterface.setCommandHandler(GET_DEVICE_NAME, HandleGetDeviceName);
 }
 
 void setup()

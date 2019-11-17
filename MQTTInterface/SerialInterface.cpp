@@ -28,6 +28,28 @@ void SerialInterface::setCommandHandler(uint8_t cmd, std::function<void(uint8_t*
   m_CmdHandler[cmd] = fn;
 }
 
+void SerialInterface::sendCommand(uint8_t cmd, void* buf, uint8_t len)
+{
+  MSG_BODY msg;
+
+  if (len > MAX_PAYLOAD_SIZE)
+    len = MAX_PAYLOAD_SIZE;
+
+  if (buf && len)
+    memcpy(msg.payload, buf, len);
+  else
+    len = 0;
+
+  msg.cmd = cmd;
+  msg.len = len;
+
+  Serial.write(SERIAL_STX);
+  Serial.write(msg.cmd);
+  Serial.write(msg.len);
+  Serial.write(msg.payload, msg.len);
+  Serial.write(SERIAL_ETX);
+}
+
 void SerialInterface::WaitingForSTXState(uint8_t c)
 {
   if (c == SERIAL_STX)
@@ -36,8 +58,8 @@ void SerialInterface::WaitingForSTXState(uint8_t c)
 
     //Reset the current command code and the number of
     //bytes received
-    m_CurrentCommand = 
-    m_CommandDataCount = 0;
+    m_CurrentCommand =
+      m_CommandDataCount = 0;
     //The data buffer isn't reset because only the number of bytes
     //written is needed
   }
@@ -45,8 +67,8 @@ void SerialInterface::WaitingForSTXState(uint8_t c)
 
 void SerialInterface::WaitingForCMDState(uint8_t c)
 {
-    m_CurrentCommand = c;
-    m_ParseState = WAITING_FOR_LEN;
+  m_CurrentCommand = c;
+  m_ParseState = WAITING_FOR_LEN;
 }
 
 void SerialInterface::WaitingForLenState(uint8_t c)
