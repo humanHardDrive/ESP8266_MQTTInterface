@@ -9,6 +9,7 @@
 #define LOG logger << '\n' << millis() << '\t'
 
 #define _REIFB    //Recovery Error Is First Boot
+#define PROG_DBG
 
 #define DEVICE_NAME_BASE          "mqttDev-"
 
@@ -42,7 +43,11 @@ struct SAVE_INFO
 SAVE_INFO SavedInfo, SavedInfoMirror;
 SerialInterface serInterface;
 SoftwareSerial dbg(DBG_TX_PIN, DBG_RX_PIN, false, 256);
+#ifdef PROG_DBG
+Stream& logger(Serial);
+#else
 Stream& logger(dbg);
+#endif
 NetworkHelper helper;
 uint8_t connectedState = NOT_CONNECTED;
 
@@ -137,26 +142,31 @@ bool RecoverInfo()
 /*MESSAGE HANDLERS*/
 void HandleSetNetworkName(uint8_t* buf)
 {
+  LOG << "HandleSetNetworkName";
   strcpy(SavedInfoMirror.sNetworkName, (char*)buf);
 }
 
 void HandleSetNetworkPass(uint8_t* buf)
 {
+  LOG << "HandleSetNetworkPass";
   strcpy(SavedInfoMirror.sNetworkPass, (char*)buf);
 }
 
 void HandleGetNetworkName(uint8_t* buf)
 {
+  LOG << "HandleGetNetworkName";
   serInterface.sendCommand(GET_NETWORK_NAME, SavedInfoMirror.sNetworkName, strlen(SavedInfoMirror.sNetworkName));
 }
 
 void HandleGetNetworkPass(uint8_t* buf)
 {
+  LOG << "HandleGetNetworkPass";
   serInterface.sendCommand(GET_NETWORK_PASS, SavedInfoMirror.sNetworkPass, strlen(SavedInfoMirror.sNetworkPass));
 }
 
 void HandleGetDeviceName(uint8_t* buf)
 {
+  LOG << "HandleGetDeviceName";
   serInterface.sendCommand(GET_DEVICE_NAME, SavedInfoMirror.sDeviceName, strlen(SavedInfoMirror.sDeviceName));
 }
 
