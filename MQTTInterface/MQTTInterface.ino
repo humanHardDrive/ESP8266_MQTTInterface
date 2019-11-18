@@ -97,7 +97,10 @@ void SaveInfo()
   if (memcmp(&SavedInfo, &SavedInfoMirror, sizeof(SAVE_INFO)))
     //EEPROM and local copy are different, better save
   {
+    SavedInfo.checksum = calcSavedInfoChecksum(&SavedInfo);
+    LOG << "Saving";
     EEPROM.put(0, SavedInfo);
+    EEPROM.commit();
     //Write back the changes to the local copy
     memcpy(&SavedInfoMirror, &SavedInfo, sizeof(SAVE_INFO));
   }
@@ -123,14 +126,13 @@ bool RecoverInfo()
     LOG << "Saved info is not valid";
 
 #ifdef _REIFB
-    firstBootSetup(&SavedInfoMirror);
+    firstBootSetup(&SavedInfo);
+    SaveInfo();
 
     LOG << "Treating as first boot";
     LOG << "Device name " << SavedInfoMirror.sDeviceName;
     LOG << "Network info " << SavedInfoMirror.sNetworkName << " " << SavedInfoMirror.sNetworkPass;
     LOG << "MQTT info " << SavedInfoMirror.sServerName << " " << SavedInfoMirror.sServerPass;
-
-    memcpy(&SavedInfo, &SavedInfoMirror, sizeof(SAVE_INFO));
 
     return true;
 #endif
@@ -170,13 +172,37 @@ void HandleGetDeviceName(uint8_t* buf)
   serInterface.sendCommand(GET_DEVICE_NAME, SavedInfoMirror.sDeviceName, strlen(SavedInfoMirror.sDeviceName));
 }
 
+void HandleStartNetworkHelper(uint8_t* buf)
+{
+  LOG << "HandleStartNetworkHelper";
+  helper.start();
+}
+
+void HandleStopNetworkHelper(uint8_t* buf)
+{
+  LOG << "HandleStopNetworkHelper";
+  helper.stop();
+}
+
+void HandleSave(uint8_t* buf)
+{
+  LOG << "HandleSave";
+  SaveInfo();
+}
+
 void SetupMessageHandlers()
 {
   serInterface.setCommandHandler(SET_NETWORK_NAME, HandleSetNetworkName);
   serInterface.setCommandHandler(SET_NETWORK_PASS, HandleSetNetworkPass);
+  
   serInterface.setCommandHandler(GET_NETWORK_NAME, HandleGetNetworkName);
   serInterface.setCommandHandler(GET_NETWORK_PASS, HandleGetNetworkPass);
   serInterface.setCommandHandler(GET_DEVICE_NAME, HandleGetDeviceName);
+
+  serInterface.setCommandHandler(START_NETWORK_HELPER, HandleStartNetworkHelper);
+  serInterface.setCommandHandler(STOP_NETWORK_HELPER, HandleStopNetworkHelper);
+
+  serInterface.setCommandHandler(SAVE, HandleSave);
 }
 
 void setup()

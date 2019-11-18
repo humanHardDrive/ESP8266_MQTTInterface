@@ -1,10 +1,12 @@
 import argparse
 import serial
 
+cmdOptions = ["getDeviceName", "getNetworkName", "getNetworkPass", "startNetworkHelper", "stopNetworkHelper", "save"]
+
 parser = argparse.ArgumentParser(description='MQTT Interface Command Test')
 parser.add_argument("--port", required=True, type=str, help="Serial port name")
 parser.add_argument("--baud", required=True, type=int, help="Serial port baud rate")
-parser.add_argument("--cmd", required=True, type=str, help="Command options", choices=["getDeviceName", "getNetworkName", "getNetworkPass"])
+parser.add_argument("--cmd", required=True, type=str, help="Command options", choices=cmdOptions)
 
 args = parser.parse_args()
 
@@ -28,6 +30,12 @@ elif args.cmd == "getNetworkName":
 	msg[1] = 0x03
 elif args.cmd == "getNetworkPass":
 	msg[1] = 0x04
+elif args.cmd == "startNetworkHelper":
+	msg[1] = 0x0a
+elif args.cmd == "stopNetworkHelper":
+	msg[1] = 0x0b
+elif args.cmd == "save":
+	msg[1] = 0x0e
 
 bMsg = bytes(msg)
 comPort.write(msg)
