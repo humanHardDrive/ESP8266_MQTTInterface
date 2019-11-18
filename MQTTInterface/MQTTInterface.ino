@@ -9,6 +9,7 @@
 #define LOG logger << '\n' << millis() << '\t'
 
 #define _REIFB    //Recovery Error Is First Boot
+/*Send log statements out of the programming port*/
 #define PROG_DBG
 
 #define DEVICE_NAME_BASE          "mqttDev-"
@@ -18,13 +19,6 @@
 
 #define DBG_TX_PIN  14
 #define DBG_RX_PIN  15
-
-enum
-{
-  NOT_CONNECTED = 0,
-  CONNECTED_TO_AP,
-  IS_AP
-};
 
 struct SAVE_INFO
 {
@@ -49,7 +43,7 @@ Stream& logger(Serial);
 Stream& logger(dbg);
 #endif
 NetworkHelper helper;
-uint8_t connectedState = NOT_CONNECTED;
+uint8_t connectedState = DISCONNECTED, oldConnectedState = UNKNOWN_STATE;
 
 /*INFO FUNCTIONS*/
 uint32_t calcSavedInfoChecksum(SAVE_INFO* info)
@@ -141,17 +135,70 @@ bool RecoverInfo()
   return false;
 }
 
+/*NETWORK SETUP*/
+void DisconnectFromAP()
+{
+  if (connectedState == CONNECTED_TO_AP)
+  {
+    LOG << "Disconnecting from AP";
+    WiFi.disconnect();
+    connectedState = DISCONNECTED;
+  }
+}
+
+void StopAP()
+{
+  if (connectedState == ACTING_AS_AP)
+  {
+    LOG << "Stopping AP";
+    WiFi.softAPdisconnect(true);
+    connectedState = DISCONNECTED;
+  }
+}
+
+void GenericDisconnect()
+{
+  switch (connectedState)
+  {
+    case CONNECTED_TO_AP:
+      DisconnectFromAP();
+      break;
+
+    case ACTING_AS_AP:
+      StopAP();
+      break;
+  }
+}
+
+void ConnectToAP()
+{
+  if (strlen(SavedInfo.sNetworkName))
+  {
+    GenericDisconnect();
+    WiFi.mode(WIFI_STA);
+
+    if (strlen(SavedInfo.sNetworkPass))
+      WiFi.begin(SavedInfo.sNetworkName, SavedInfo.sNetworkPass);
+    else
+      WiFi.begin(SavedInfo.sNetworkName);
+  }
+  else
+  {
+    LOG << "No network name known";
+  }
+}
+
 /*MESSAGE HANDLERS*/
 void HandleSetNetworkName(uint8_t* buf)
 {
   LOG << "HandleSetNetworkName";
-  strcpy(SavedInfoMirror.sNetworkName, (char*)buf);
+  strcpy(SavedInfo.sNetworkName, (char*)buf);
 }
 
 void HandleSetNetworkPass(uint8_t* buf)
 {
   LOG << "HandleSetNetworkPass";
-  strcpy(SavedInfoMirror.sNetworkPass, (char*)buf);
+  strcpy(SavedInfo.sNetworkPass, (char*)buf);
 }
 
 void HandleGetNetworkName(uint8_t* buf)
@@ -170,6 +217,16 @@ void HandleGetDeviceName(uint8_t* buf)
 {
   LOG << "HandleGetDeviceName";
   serInterface.sendCommand(GET_DEVICE_NAME, SavedInfoMirror.sDeviceName, strlen(SavedInfoMirror.sDeviceName));
+}
+
+void HandleConnectToAP(uint8_t* buf)
+{
+  LOG << "HandleConnectToAP";
+}
+
+void HandleDisconnectFromAP(uint8_t* buf)
+{
+  LOG << "HandleDisconnectFromAP";
 }
 
 void HandleStartNetworkHelper(uint8_t* buf)
@@ -194,7 +251,7 @@ void SetupMessageHandlers()
 {
   serInterface.setCommandHandler(SET_NETWORK_NAME, HandleSetNetworkName);
   serInterface.setCommandHandler(SET_NETWORK_PASS, HandleSetNetworkPass);
-  
+
   serInterface.setCommandHandler(GET_NETWORK_NAME, HandleGetNetworkName);
   serInterface.setCommandHandler(GET_NETWORK_PASS, HandleGetNetworkPass);
   serInterface.setCommandHandler(GET_DEVICE_NAME, HandleGetDeviceName);
@@ -203,6 +260,27 @@ void SetupMessageHandlers()
   serInterface.setCommandHandler(STOP_NETWORK_HELPER, HandleStopNetworkHelper);
 
   serInterface.setCommandHandler(SAVE, HandleSave);
+}
+
+void MonitorConnectionStatus()
+{
+  if (connectedState != oldConnectedState)
+  {
+    /*If trying to connect to an AP, monitor the WiFi status*/
+    if (connectedState == CONNECTING_TO_AP)
+    {
+      /*Connected is the easy case*/
+      if (WiFi.status() == WL_CONNECTED)
+        connectedState = CONNECTED_TO_AP;
+      /*Any other status besides idle (no ssid avail, connect failed, disconnected) is considered disconnected*/
+      else if (WiFi.status() != WL_IDLE_STATUS)
+        connectedState = DISCONNECTED;
+    }
+
+    LOG << "Connection status changed to " << connectedState << " from " << oldConnectedState;
+    serInterface.sendCommand(NETWORK_STATE_CHANGE, &connectedState, sizeof(connectedState));
+    oldConnectedState = connectedState;
+  }
 }
 
 void setup()
@@ -233,5 +311,6 @@ void loop()
   if (Serial.available())
     serInterface.update(Serial.read());
 
+  MonitorConnectionStatus();
   helper.background();
 }
