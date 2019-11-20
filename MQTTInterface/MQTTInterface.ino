@@ -28,8 +28,6 @@ struct SAVE_INFO
   char sServerName[MAX_NETWORK_NAME_LENGTH];
   char sServerPass[MAX_NETWORK_NAME_LENGTH];
 
-  char sDeviceName[MAX_DEVICE_NAME_LENGTH];
-
   uint32_t checksum;
 };
 
@@ -44,6 +42,8 @@ Stream& logger(dbg);
 #endif
 NetworkHelper helper;
 uint8_t connectedState = DISCONNECTED, oldConnectedState = UNKNOWN_STATE;
+char sDeviceName[MAX_DEVICE_NAME_LENGTH];
+char sHexMap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
 /*ACCESS POINT CONFIGURATION*/
 IPAddress local_IP(192, 168, 1, 1);
@@ -51,6 +51,22 @@ IPAddress gateway(192, 168, 1, 1);
 IPAddress subnet(255, 255, 255, 0);
 
 /*INFO FUNCTIONS*/
+void buildDeviceName(char* sName)
+{
+  uint32_t nID = ESP.getChipId();
+  char sID[MAX_DEVICE_NAME_LENGTH];
+  strcpy(sName, DEVICE_NAME_BASE);
+
+  memset(sID, 0, MAX_DEVICE_NAME_LENGTH);
+  for(uint8_t i = 0; i < 6; i++)
+  {
+    sID[i] = sHexMap[nID & 0x0F];
+    nID >>= 4;
+  }
+
+  strcat(sName, sID);
+}
+
 uint32_t calcSavedInfoChecksum(SAVE_INFO* info)
 {
   uint32_t checksum = 0;
@@ -68,27 +84,10 @@ bool isSavedInfoValid(SAVE_INFO* info)
 
 void firstBootSetup(SAVE_INFO* info)
 {
-  String devName;
-
   memset(info->sNetworkName, 0, MAX_NETWORK_NAME_LENGTH);
   memset(info->sNetworkPass, 0, MAX_NETWORK_NAME_LENGTH);
   memset(info->sServerName, 0, MAX_NETWORK_NAME_LENGTH);
   memset(info->sServerPass, 0, MAX_NETWORK_NAME_LENGTH);
-
-  devName = DEVICE_NAME_BASE;
-  size_t remainingChar = (MAX_DEVICE_NAME_LENGTH - devName.length()) - 1;
-  for (size_t i = 0; i < remainingChar; i++)
-  {
-    char c;
-    do
-    {
-      c = random('0', 'Z' + 1);
-    } while (!isalnum(c));
-
-    devName += c;
-  }
-
-  strcpy(info->sDeviceName, devName.c_str());
 }
 
 void SaveInfo()
@@ -112,7 +111,7 @@ bool RecoverInfo()
   if (isSavedInfoValid(&SavedInfoMirror))
   {
     LOG << "Saved info is valid";
-    LOG << "Device name " << SavedInfoMirror.sDeviceName;
+    LOG << "Device name " << sDeviceName;
     LOG << "Network info " << SavedInfoMirror.sNetworkName << " " << SavedInfoMirror.sNetworkPass;
     LOG << "MQTT info " << SavedInfoMirror.sServerName << " " << SavedInfoMirror.sServerPass;
 
@@ -129,7 +128,7 @@ bool RecoverInfo()
     SaveInfo();
 
     LOG << "Treating as first boot";
-    LOG << "Device name " << SavedInfoMirror.sDeviceName;
+    LOG << "Device name " << sDeviceName;
     LOG << "Network info " << SavedInfoMirror.sNetworkName << " " << SavedInfoMirror.sNetworkPass;
     LOG << "MQTT info " << SavedInfoMirror.sServerName << " " << SavedInfoMirror.sServerPass;
 
@@ -205,12 +204,10 @@ void StartAP()
   if (connectedState != ACTING_AS_AP)
   {
     GenericDisconnect();
-    char tempName[MAX_DEVICE_NAME_LENGTH];
-    strcpy(tempName, SavedInfo.sDeviceName);
     
     WiFi.mode(WIFI_AP);
     WiFi.softAPConfig(local_IP, gateway, subnet);
-    WiFi.softAP(tempName);
+    WiFi.softAP(sDeviceName);
 
     connectedState = ACTING_AS_AP;
   }
@@ -245,7 +242,7 @@ void HandleGetNetworkPass(uint8_t* buf)
 void HandleGetDeviceName(uint8_t* buf)
 {
   LOG << "HandleGetDeviceName";
-  serInterface.sendCommand(GET_DEVICE_NAME, SavedInfo.sDeviceName, strlen(SavedInfo.sDeviceName));
+  serInterface.sendCommand(GET_DEVICE_NAME, sDeviceName, strlen(sDeviceName));
 }
 
 void HandleConnectToAP(uint8_t* buf)
@@ -353,6 +350,7 @@ void setup()
   Serial.begin(115200);
   dbg.begin(115200);
 
+  buildDeviceName(sDeviceName);
   RecoverInfo();
 
   SetupMessageHandlers();
