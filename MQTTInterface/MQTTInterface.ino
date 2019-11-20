@@ -177,13 +177,13 @@ void GenericDisconnect()
 
 void ConnectToAP()
 {
-  if(connectedState != CONNECTED_TO_AP)
+  if (connectedState != CONNECTED_TO_AP)
   {
     if (strlen(SavedInfo.sNetworkName))
     {
       GenericDisconnect();
       WiFi.mode(WIFI_STA);
-  
+
       if (strlen(SavedInfo.sNetworkPass))
         WiFi.begin(SavedInfo.sNetworkName, SavedInfo.sNetworkPass);
       else
@@ -202,13 +202,16 @@ void ConnectToAP()
 
 void StartAP()
 {
-  if(connectedState != ACTING_AS_AP)
+  if (connectedState != ACTING_AS_AP)
   {
     GenericDisconnect();
+    char tempName[MAX_DEVICE_NAME_LENGTH];
+    strcpy(tempName, SavedInfo.sDeviceName);
+    
     WiFi.mode(WIFI_AP);
     WiFi.softAPConfig(local_IP, gateway, subnet);
-    WiFi.softAP(SavedInfo.sDeviceName);
-    
+    WiFi.softAP(tempName);
+
     connectedState = ACTING_AS_AP;
   }
 }
@@ -226,22 +229,23 @@ void HandleSetNetworkPass(uint8_t* buf)
   strcpy(SavedInfo.sNetworkPass, (char*)buf);
 }
 
+/*These should return the current network name, saved in flash or not*/
 void HandleGetNetworkName(uint8_t* buf)
 {
   LOG << "HandleGetNetworkName";
-  serInterface.sendCommand(GET_NETWORK_NAME, SavedInfoMirror.sNetworkName, strlen(SavedInfoMirror.sNetworkName));
+  serInterface.sendCommand(GET_NETWORK_NAME, SavedInfo.sNetworkName, strlen(SavedInfo.sNetworkName));
 }
 
 void HandleGetNetworkPass(uint8_t* buf)
 {
   LOG << "HandleGetNetworkPass";
-  serInterface.sendCommand(GET_NETWORK_PASS, SavedInfoMirror.sNetworkPass, strlen(SavedInfoMirror.sNetworkPass));
+  serInterface.sendCommand(GET_NETWORK_PASS, SavedInfo.sNetworkPass, strlen(SavedInfo.sNetworkPass));
 }
 
 void HandleGetDeviceName(uint8_t* buf)
 {
   LOG << "HandleGetDeviceName";
-  serInterface.sendCommand(GET_DEVICE_NAME, SavedInfoMirror.sDeviceName, strlen(SavedInfoMirror.sDeviceName));
+  serInterface.sendCommand(GET_DEVICE_NAME, SavedInfo.sDeviceName, strlen(SavedInfo.sDeviceName));
 }
 
 void HandleConnectToAP(uint8_t* buf)
@@ -328,6 +332,15 @@ void MonitorConnectionStatus()
   }
 }
 
+void UpdateNetworkInfo(String sNetworkName, String sNetworkPass)
+{
+  strcpy(SavedInfo.sNetworkName, sNetworkName.c_str());
+  strcpy(SavedInfo.sNetworkPass, sNetworkPass.c_str());
+
+  LOG << "Network Change " << sNetworkName << " " << sNetworkPass;
+  serInterface.sendCommand(NETWORK_CHANGE, SavedInfo.sNetworkName, sNetworkName.length());
+}
+
 void setup()
 {
   delay(1000);
@@ -347,7 +360,7 @@ void setup()
   helper.onNetworkChange(
     [](String ssid, String password)
   {
-    dbg.println("Network change");
+    UpdateNetworkInfo(ssid, password);
   });
 }
 
