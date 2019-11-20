@@ -45,6 +45,11 @@ Stream& logger(dbg);
 NetworkHelper helper;
 uint8_t connectedState = DISCONNECTED, oldConnectedState = UNKNOWN_STATE;
 
+/*ACCESS POINT CONFIGURATION*/
+IPAddress local_IP(192, 168, 1, 1);
+IPAddress gateway(192, 168, 1, 1);
+IPAddress subnet(255, 255, 255, 0);
+
 /*INFO FUNCTIONS*/
 uint32_t calcSavedInfoChecksum(SAVE_INFO* info)
 {
@@ -172,19 +177,39 @@ void GenericDisconnect()
 
 void ConnectToAP()
 {
-  if (strlen(SavedInfo.sNetworkName))
+  if(connectedState != CONNECTED_TO_AP)
   {
-    GenericDisconnect();
-    WiFi.mode(WIFI_STA);
-
-    if (strlen(SavedInfo.sNetworkPass))
-      WiFi.begin(SavedInfo.sNetworkName, SavedInfo.sNetworkPass);
+    if (strlen(SavedInfo.sNetworkName))
+    {
+      GenericDisconnect();
+      WiFi.mode(WIFI_STA);
+  
+      if (strlen(SavedInfo.sNetworkPass))
+        WiFi.begin(SavedInfo.sNetworkName, SavedInfo.sNetworkPass);
+      else
+        WiFi.begin(SavedInfo.sNetworkName);
+    }
     else
-      WiFi.begin(SavedInfo.sNetworkName);
+    {
+      LOG << "No network name known";
+    }
   }
   else
   {
-    LOG << "No network name known";
+    LOG << "Already connected to AP. Disconnect first";
+  }
+}
+
+void StartAP()
+{
+  if(connectedState != ACTING_AS_AP)
+  {
+    GenericDisconnect();
+    WiFi.mode(WIFI_AP);
+    WiFi.softAPConfig(local_IP, gateway, subnet);
+    WiFi.softAP(SavedInfo.sDeviceName);
+    
+    connectedState = ACTING_AS_AP;
   }
 }
 
@@ -222,11 +247,25 @@ void HandleGetDeviceName(uint8_t* buf)
 void HandleConnectToAP(uint8_t* buf)
 {
   LOG << "HandleConnectToAP";
+  ConnectToAP();
 }
 
 void HandleDisconnectFromAP(uint8_t* buf)
 {
   LOG << "HandleDisconnectFromAP";
+  DisconnectFromAP();
+}
+
+void HandleStartAP(uint8_t* buf)
+{
+  LOG << "HandleStartAP";
+  StartAP();
+}
+
+void HandleStopAP(uint8_t* buf)
+{
+  LOG << "HandleStopAP";
+  StopAP();
 }
 
 void HandleStartNetworkHelper(uint8_t* buf)
@@ -255,6 +294,12 @@ void SetupMessageHandlers()
   serInterface.setCommandHandler(GET_NETWORK_NAME, HandleGetNetworkName);
   serInterface.setCommandHandler(GET_NETWORK_PASS, HandleGetNetworkPass);
   serInterface.setCommandHandler(GET_DEVICE_NAME, HandleGetDeviceName);
+
+  serInterface.setCommandHandler(CONNECT_TO_AP, HandleConnectToAP);
+  serInterface.setCommandHandler(DISCONNECT_FROM_AP, HandleDisconnectFromAP);
+
+  serInterface.setCommandHandler(START_AP, HandleStartAP);
+  serInterface.setCommandHandler(STOP_AP, HandleStopAP);
 
   serInterface.setCommandHandler(START_NETWORK_HELPER, HandleStartNetworkHelper);
   serInterface.setCommandHandler(STOP_NETWORK_HELPER, HandleStopNetworkHelper);
