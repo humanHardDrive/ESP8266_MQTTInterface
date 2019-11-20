@@ -2,6 +2,7 @@
 #include <PubSubClient.h>
 #include <EEPROM.h>
 #include <Streaming.h>
+#include <ESP8266WiFi.h>
 
 #include "SerialInterface.h"
 #include "NetworkHelper.h"
@@ -58,7 +59,7 @@ void buildDeviceName(char* sName)
   strcpy(sName, DEVICE_NAME_BASE);
 
   memset(sID, 0, MAX_DEVICE_NAME_LENGTH);
-  for(uint8_t i = 0; i < 6; i++)
+  for (uint8_t i = 0; i < 6; i++)
   {
     sID[i] = sHexMap[nID & 0x0F];
     nID >>= 4;
@@ -140,6 +141,19 @@ bool RecoverInfo()
 }
 
 /*NETWORK SETUP*/
+bool WaitForModeChange(WiFiMode mode, uint32_t timeout)
+{
+  WiFi.mode(mode);
+  uint32_t startTime = millis();
+
+  while ((millis() - startTime) < timeout && WiFi.getMode() != mode);
+
+  if (WiFi.getMode() == mode)
+    return true;
+
+  return false;
+}
+
 void DisconnectFromAP()
 {
   if (connectedState == CONNECTED_TO_AP)
@@ -181,12 +195,17 @@ void ConnectToAP()
     if (strlen(SavedInfo.sNetworkName))
     {
       GenericDisconnect();
-      WiFi.mode(WIFI_STA);
-
-      if (strlen(SavedInfo.sNetworkPass))
-        WiFi.begin(SavedInfo.sNetworkName, SavedInfo.sNetworkPass);
+      if (WaitForModeChange(WIFI_STA, 100))
+      {
+        if (strlen(SavedInfo.sNetworkPass))
+          WiFi.begin(SavedInfo.sNetworkName, SavedInfo.sNetworkPass);
+        else
+          WiFi.begin(SavedInfo.sNetworkName);
+      }
       else
-        WiFi.begin(SavedInfo.sNetworkName);
+      {
+        LOG << "Unable to switch to STA mode";
+      }
     }
     else
     {
@@ -204,12 +223,18 @@ void StartAP()
   if (connectedState != ACTING_AS_AP)
   {
     GenericDisconnect();
-    
-    WiFi.mode(WIFI_AP);
-    WiFi.softAPConfig(local_IP, gateway, subnet);
-    WiFi.softAP(sDeviceName);
 
-    connectedState = ACTING_AS_AP;
+    if (WaitForModeChange(WIFI_AP, 100))
+    {
+      WiFi.softAPConfig(local_IP, gateway, subnet);
+      WiFi.softAP(sDeviceName);
+
+      connectedState = ACTING_AS_AP;
+    }
+  }
+  else
+  {
+    LOG << "Already acting as AP";
   }
 }
 
@@ -322,6 +347,9 @@ void MonitorConnectionStatus()
       else if (WiFi.status() != WL_IDLE_STATUS)
         connectedState = DISCONNECTED;
     }
+
+    if (connectedState == DISCONNECTED)
+      WiFi.mode(WIFI_OFF);
 
     LOG << "Connection status changed to " << connectedState << " from " << oldConnectedState;
     serInterface.sendCommand(NETWORK_STATE_CHANGE, &connectedState, sizeof(connectedState));
