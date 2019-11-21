@@ -316,6 +316,12 @@ void HandleSave(uint8_t* buf)
   SaveInfo();
 }
 
+void HandleGetConnectionState(uint8_t* buf)
+{
+  LOG << "HandleGetConnectionState";
+  serInterface.sendCommand(GET_CONNECTION_STATE, &connectedState, sizeof(connectedState));
+}
+
 void SetupMessageHandlers()
 {
   serInterface.setCommandHandler(SET_NETWORK_NAME, HandleSetNetworkName);
@@ -335,40 +341,38 @@ void SetupMessageHandlers()
   serInterface.setCommandHandler(STOP_NETWORK_HELPER, HandleStopNetworkHelper);
 
   serInterface.setCommandHandler(SAVE, HandleSave);
+
+  serInterface.setCommandHandler(GET_CONNECTION_STATE, HandleGetConnectionState);
 }
 
 void MonitorConnectionStatus()
 {
+  /*If trying to connect to an AP, monitor the WiFi status*/
+  if (connectedState == CONNECTING_TO_AP)
+  {
+    /*Connected is the easy case*/
+    if (WiFi.status() == WL_CONNECTED)
+      connectedState = CONNECTED_TO_AP;
+    /*Any other status besides idle (no ssid avail, connect failed) is considered disconnected*/
+    else if (WiFi.status() == WL_NO_SSID_AVAIL)
+    {
+      LOG << "SSID not available";
+      connectedState = DISCONNECTED;
+    }
+    else if(WiFi.status() == WL_CONNECT_FAILED)
+    {
+      LOG << "Incorrect password";
+      connectedState = DISCONNECTED;
+    }
+    else if ((millis() - nConnectionAttemptStart) > 5000)
+    {
+      LOG << "Connection timeout";
+      connectedState = DISCONNECTED;
+    }
+  }
+
   if (connectedState != oldConnectedState)
   {
-    /*If trying to connect to an AP, monitor the WiFi status*/
-    if (connectedState == CONNECTING_TO_AP)
-    {
-      /*Connected is the easy case*/
-      if (WiFi.status() == WL_CONNECTED)
-        connectedState = CONNECTED_TO_AP;
-      /*WiFi can show disconnected status before switching to idle. Wait 100 milliseconds before failing out*/
-      else if (WiFi.status() == WL_DISCONNECTED)
-      {
-        if ((millis() - nConnectionAttemptStart) > 100)
-        {
-          LOG << "Failed to connect: " << "??";
-          connectedState = DISCONNECTED;
-        }
-      }
-      /*Any other status besides idle (no ssid avail, connect failed, disconnected) is considered disconnected*/
-      else if (WiFi.status() != WL_IDLE_STATUS)
-      {
-        LOG << "Failed to connect: " << WiFi.status();
-        connectedState = DISCONNECTED;
-      }
-      else if ((millis() - nConnectionAttemptStart) > 5000)
-      {
-        LOG << "Failed to connect: " << "timeout";
-        connectedState = DISCONNECTED;
-      }
-    }
-
     if (connectedState == DISCONNECTED)
       WiFi.mode(WIFI_OFF);
 

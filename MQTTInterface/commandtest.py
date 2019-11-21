@@ -11,7 +11,8 @@ cmdMap = {
 	"stopAP" : 0x09,
 	"startNetworkHelper" : 0x0a,
 	"stopNetworkHelper" : 0x0b,
-	"save" : 0x0e
+	"save" : 0x0e,
+	"getConnectionState" : 0x0f
 }
 
 parser = argparse.ArgumentParser(description='MQTT Interface Command Test')
@@ -24,7 +25,7 @@ args = parser.parse_args()
 comPort = serial.Serial()
 comPort.port = args.port
 comPort.baudrate = args.baud
-comPort.timeout = 10
+comPort.timeout = 0.1
 
 try:
 	comPort.open()
