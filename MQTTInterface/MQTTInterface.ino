@@ -347,10 +347,32 @@ void HandleGetConnectionState(uint8_t* buf)
   serInterface.sendCommand(GET_CONNECTION_STATE, &networkState, sizeof(networkState));
 }
 
-void HandleRebbot(uint8_t* buf)
+void HandleReboot(uint8_t* buf)
 {
   LOG << "HandleReboot";
   reboot();
+}
+
+void HandleSetServerName(uint8_t* buf)
+{
+  LOG << "HandleSetServerName";
+}
+
+void HandleSetServerPass(uint8_t* buf)
+{
+  LOG << "HandleSetServerPass";
+}
+
+void HandleGetServerName(uint8_t* buf)
+{
+  LOG << "HandleGetServerName";
+  serInterface.sendCommand(GET_SERVER_NAME, SavedInfo.sServerName, strlen(SavedInfo.sServerName));
+}
+
+void HandleGetServerPass(uint8_t* buf)
+{
+  LOG << "HandleGetServerPass";
+  serInterface.sendCommand(GET_SERVER_PASS, SavedInfo.sServerPass, strlen(SavedInfo.sServerPass));
 }
 
 void SetupMessageHandlers()
@@ -375,7 +397,7 @@ void SetupMessageHandlers()
 
   serInterface.setCommandHandler(GET_CONNECTION_STATE, HandleGetConnectionState);
 
-  serInterface.setCommandHandler(REBOOT, HandleRebbot);
+  serInterface.setCommandHandler(REBOOT, HandleReboot);
 }
 
 void MonitorConnectionStatus()
