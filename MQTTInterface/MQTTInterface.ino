@@ -43,9 +43,11 @@ Stream& logger(dbg);
 #endif
 NetworkHelper helper;
 uint32_t nConnectionAttemptStart = 0;
-uint8_t connectedState = DISCONNECTED, oldConnectedState = UNKNOWN_STATE;
+uint8_t networkState = DISCONNECTED, oldNetworkState = UNKNOWN_STATE;
 char sDeviceName[MAX_DEVICE_NAME_LENGTH];
 char sHexMap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+WiFiClient wifiClient;
+PubSubClient mqttClient(wifiClient);
 
 /*ACCESS POINT CONFIGURATION*/
 IPAddress local_IP(192, 168, 1, 1);
@@ -169,27 +171,27 @@ bool WaitForModeChange(WiFiMode mode, uint32_t timeout)
 
 void DisconnectFromAP()
 {
-  if (connectedState == CONNECTED_TO_AP)
+  if (networkState == CONNECTED_TO_AP)
   {
     LOG << "Disconnecting from AP";
     WiFi.disconnect();
-    connectedState = DISCONNECTED;
+    networkState = DISCONNECTED;
   }
 }
 
 void StopAP()
 {
-  if (connectedState == ACTING_AS_AP)
+  if (networkState == ACTING_AS_AP)
   {
     LOG << "Stopping AP";
     WiFi.softAPdisconnect(true);
-    connectedState = DISCONNECTED;
+    networkState = DISCONNECTED;
   }
 }
 
 void GenericDisconnect()
 {
-  switch (connectedState)
+  switch (networkState)
   {
     case CONNECTED_TO_AP:
       DisconnectFromAP();
@@ -203,7 +205,7 @@ void GenericDisconnect()
 
 void ConnectToAP()
 {
-  if (connectedState != CONNECTED_TO_AP)
+  if (networkState != CONNECTED_TO_AP)
   {
     if (strlen(SavedInfo.sNetworkName))
     {
@@ -215,7 +217,7 @@ void ConnectToAP()
         else
           WiFi.begin(SavedInfo.sNetworkName);
 
-        connectedState = CONNECTING_TO_AP;
+        networkState = CONNECTING_TO_AP;
         nConnectionAttemptStart = millis();
       }
       else
@@ -236,7 +238,7 @@ void ConnectToAP()
 
 void StartAP()
 {
-  if (connectedState != ACTING_AS_AP)
+  if (networkState != ACTING_AS_AP)
   {
     GenericDisconnect();
 
@@ -245,13 +247,24 @@ void StartAP()
       WiFi.softAPConfig(local_IP, gateway, subnet);
       WiFi.softAP(sDeviceName);
 
-      connectedState = ACTING_AS_AP;
+      networkState = ACTING_AS_AP;
     }
   }
   else
   {
     LOG << "Already acting as AP";
   }
+}
+
+/*MQTT SERVER FUNCTIONS*/
+void DisconnectFromServer()
+{
+  
+}
+
+void ConnectToServer()
+{
+  
 }
 
 /*MESSAGE HANDLERS*/
@@ -331,7 +344,7 @@ void HandleSave(uint8_t* buf)
 void HandleGetConnectionState(uint8_t* buf)
 {
   LOG << "HandleGetConnectionState";
-  serInterface.sendCommand(GET_CONNECTION_STATE, &connectedState, sizeof(connectedState));
+  serInterface.sendCommand(GET_CONNECTION_STATE, &networkState, sizeof(networkState));
 }
 
 void HandleRebbot(uint8_t* buf)
@@ -368,37 +381,38 @@ void SetupMessageHandlers()
 void MonitorConnectionStatus()
 {
   /*If trying to connect to an AP, monitor the WiFi status*/
-  if (connectedState == CONNECTING_TO_AP)
+  if (networkState == CONNECTING_TO_AP)
   {
     /*Connected is the easy case*/
     if (WiFi.status() == WL_CONNECTED)
-      connectedState = CONNECTED_TO_AP;
+      networkState = CONNECTED_TO_AP;
     /*Any other status besides idle (no ssid avail, connect failed) is considered disconnected*/
     else if (WiFi.status() == WL_NO_SSID_AVAIL)
     {
       LOG << "SSID not available";
-      connectedState = DISCONNECTED;
+      networkState = DISCONNECTED;
     }
     else if(WiFi.status() == WL_CONNECT_FAILED)
     {
       LOG << "Incorrect password";
-      connectedState = DISCONNECTED;
+      networkState = DISCONNECTED;
     }
     else if ((millis() - nConnectionAttemptStart) > 5000)
     {
       LOG << "Connection timeout";
-      connectedState = DISCONNECTED;
+      networkState = DISCONNECTED;
     }
   }
 
-  if (connectedState != oldConnectedState)
+  /*Only on change*/
+  if (networkState != oldNetworkState)
   {
-    if (connectedState == DISCONNECTED)
+    if (networkState == DISCONNECTED)
       WiFi.mode(WIFI_OFF);
 
-    LOG << "Connection status changed to " << connectedState << " from " << oldConnectedState;
-    serInterface.sendCommand(NETWORK_STATE_CHANGE, &connectedState, sizeof(connectedState));
-    oldConnectedState = connectedState;
+    LOG << "Connection status changed to " << networkState << " from " << oldNetworkState;
+    serInterface.sendCommand(NETWORK_STATE_CHANGE, &networkState, sizeof(networkState));
+    oldNetworkState = networkState;
   }
 }
 
