@@ -12,7 +12,8 @@ cmdMap = {
 	"startNetworkHelper" : 0x0a,
 	"stopNetworkHelper" : 0x0b,
 	"save" : 0x0e,
-	"getConnectionState" : 0x0f
+	"getConnectionState" : 0x0f,
+	"reboot" : 0x10
 }
 
 parser = argparse.ArgumentParser(description='MQTT Interface Command Test')

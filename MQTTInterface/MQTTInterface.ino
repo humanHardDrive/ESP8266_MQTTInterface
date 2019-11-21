@@ -141,6 +141,18 @@ bool RecoverInfo()
   return false;
 }
 
+void reboot()
+{
+  GenericDisconnect();
+  helper.stop();
+
+  EEPROM.end();
+
+  delay(500);
+
+  while(1);
+}
+
 /*NETWORK SETUP*/
 bool WaitForModeChange(WiFiMode mode, uint32_t timeout)
 {
@@ -322,6 +334,12 @@ void HandleGetConnectionState(uint8_t* buf)
   serInterface.sendCommand(GET_CONNECTION_STATE, &connectedState, sizeof(connectedState));
 }
 
+void HandleRebbot(uint8_t* buf)
+{
+  LOG << "HandleReboot";
+  reboot();
+}
+
 void SetupMessageHandlers()
 {
   serInterface.setCommandHandler(SET_NETWORK_NAME, HandleSetNetworkName);
@@ -343,6 +361,8 @@ void SetupMessageHandlers()
   serInterface.setCommandHandler(SAVE, HandleSave);
 
   serInterface.setCommandHandler(GET_CONNECTION_STATE, HandleGetConnectionState);
+
+  serInterface.setCommandHandler(REBOOT, HandleRebbot);
 }
 
 void MonitorConnectionStatus()
