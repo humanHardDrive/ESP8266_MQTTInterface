@@ -42,6 +42,7 @@ Stream& logger(Serial);
 Stream& logger(dbg);
 #endif
 NetworkHelper helper;
+uint32_t nConnectionAttemptStart = 0;
 uint8_t connectedState = DISCONNECTED, oldConnectedState = UNKNOWN_STATE;
 char sDeviceName[MAX_DEVICE_NAME_LENGTH];
 char sHexMap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
@@ -61,7 +62,7 @@ void buildDeviceName(char* sName)
   memset(sID, 0, MAX_DEVICE_NAME_LENGTH);
   for (uint8_t i = 0; i < 6; i++)
   {
-    sID[i] = sHexMap[nID & 0x0F];
+    sID[5 - i] = sHexMap[nID & 0x0F];
     nID >>= 4;
   }
 
@@ -201,6 +202,9 @@ void ConnectToAP()
           WiFi.begin(SavedInfo.sNetworkName, SavedInfo.sNetworkPass);
         else
           WiFi.begin(SavedInfo.sNetworkName);
+
+        connectedState = CONNECTING_TO_AP;
+        nConnectionAttemptStart = millis();
       }
       else
       {
@@ -343,9 +347,26 @@ void MonitorConnectionStatus()
       /*Connected is the easy case*/
       if (WiFi.status() == WL_CONNECTED)
         connectedState = CONNECTED_TO_AP;
+      /*WiFi can show disconnected status before switching to idle. Wait 100 milliseconds before failing out*/
+      else if (WiFi.status() == WL_DISCONNECTED)
+      {
+        if ((millis() - nConnectionAttemptStart) > 100)
+        {
+          LOG << "Failed to connect: " << "??";
+          connectedState = DISCONNECTED;
+        }
+      }
       /*Any other status besides idle (no ssid avail, connect failed, disconnected) is considered disconnected*/
       else if (WiFi.status() != WL_IDLE_STATUS)
+      {
+        LOG << "Failed to connect: " << WiFi.status();
         connectedState = DISCONNECTED;
+      }
+      else if ((millis() - nConnectionAttemptStart) > 5000)
+      {
+        LOG << "Failed to connect: " << "timeout";
+        connectedState = DISCONNECTED;
+      }
     }
 
     if (connectedState == DISCONNECTED)

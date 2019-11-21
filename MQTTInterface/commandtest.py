@@ -24,7 +24,7 @@ args = parser.parse_args()
 comPort = serial.Serial()
 comPort.port = args.port
 comPort.baudrate = args.baud
-comPort.timeout = 1
+comPort.timeout = 10
 
 try:
 	comPort.open()
@@ -37,6 +37,6 @@ msg[1]= cmdMap[args.cmd]
 
 bMsg = bytes(msg)
 comPort.write(msg)
-print(comPort.read(128))
+print(comPort.read(256))
 	
 comPort.close()
