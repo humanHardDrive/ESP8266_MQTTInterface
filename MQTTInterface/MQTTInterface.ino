@@ -28,6 +28,8 @@ struct SAVE_INFO
 
   char sServerName[MAX_NETWORK_NAME_LENGTH];
   char sServerPass[MAX_NETWORK_NAME_LENGTH];
+  char sUserName[MAX_NETWORK_NAME_LENGTH];
+  char sUserPass[MAX_NETWORK_NAME_LENGTH];
 
   uint32_t checksum;
 };
@@ -44,6 +46,7 @@ Stream& logger(dbg);
 NetworkHelper helper;
 uint32_t nConnectionAttemptStart = 0;
 uint8_t networkState = DISCONNECTED, oldNetworkState = UNKNOWN_STATE;
+uint8_t serverState = DISCONNECTED, oldServerState = UNKNOWN_STATE;
 char sDeviceName[MAX_DEVICE_NAME_LENGTH];
 char sHexMap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 WiFiClient wifiClient;
@@ -152,7 +155,7 @@ void reboot()
 
   delay(500);
 
-  while(1);
+  while (1);
 }
 
 /*NETWORK SETUP*/
@@ -259,12 +262,12 @@ void StartAP()
 /*MQTT SERVER FUNCTIONS*/
 void DisconnectFromServer()
 {
-  
+
 }
 
 void ConnectToServer()
 {
-  
+
 }
 
 /*MESSAGE HANDLERS*/
@@ -356,11 +359,13 @@ void HandleReboot(uint8_t* buf)
 void HandleSetServerName(uint8_t* buf)
 {
   LOG << "HandleSetServerName";
+  strcpy(SavedInfo.sServerName, (char*)buf);
 }
 
 void HandleSetServerPass(uint8_t* buf)
 {
   LOG << "HandleSetServerPass";
+  strcpy(SavedInfo.sServerPass, (char*)buf);
 }
 
 void HandleGetServerName(uint8_t* buf)
@@ -400,7 +405,7 @@ void SetupMessageHandlers()
   serInterface.setCommandHandler(REBOOT, HandleReboot);
 }
 
-void MonitorConnectionStatus()
+void MonitorNetworkStatus()
 {
   /*If trying to connect to an AP, monitor the WiFi status*/
   if (networkState == CONNECTING_TO_AP)
@@ -414,7 +419,7 @@ void MonitorConnectionStatus()
       LOG << "SSID not available";
       networkState = DISCONNECTED;
     }
-    else if(WiFi.status() == WL_CONNECT_FAILED)
+    else if (WiFi.status() == WL_CONNECT_FAILED)
     {
       LOG << "Incorrect password";
       networkState = DISCONNECTED;
@@ -430,7 +435,10 @@ void MonitorConnectionStatus()
   if (networkState != oldNetworkState)
   {
     if (networkState == DISCONNECTED)
+    {
+      serverState = DISCONNECTED;
       WiFi.mode(WIFI_OFF);
+    }
 
     LOG << "Connection status changed to " << networkState << " from " << oldNetworkState;
     serInterface.sendCommand(NETWORK_STATE_CHANGE, &networkState, sizeof(networkState));
@@ -445,6 +453,29 @@ void UpdateNetworkInfo(String sNetworkName, String sNetworkPass)
 
   LOG << "Network Change " << sNetworkName << " " << sNetworkPass;
   serInterface.sendCommand(NETWORK_CHANGE, SavedInfo.sNetworkName, sNetworkName.length());
+}
+
+void MonitorServerConnection()
+{
+  if (serverState == CONNECTING_TO_AP)
+  {
+    if(mqttClient.connected())
+      serverState = CONNECTED_TO_AP;
+  }
+  else if(serverState == CONNECTED_TO_AP)
+  {
+    if(!mqttClient.connected())
+      serverState = DISCONNECTED;
+  }
+
+  if (serverState != oldServerState)
+  {
+    if (serverState == DISCONNECTED)
+      mqttClient.disconnect();
+
+    LOG << "Server connection status changed to " << serverState << " from " << oldServerState;
+    serInterface.sendCommand(MQTT_STATE_CHANGE, &serverState, sizeof(serverState));
+  }
 }
 
 void setup()
@@ -476,6 +507,8 @@ void loop()
   if (Serial.available())
     serInterface.update(Serial.read());
 
-  MonitorConnectionStatus();
+  MonitorNetworkStatus();
+  MonitorServerConnection();
+  
   helper.background();
 }
