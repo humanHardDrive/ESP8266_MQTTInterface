@@ -23,11 +23,12 @@
 
 struct SAVE_INFO
 {
+  /*Access Point Info*/
   char sNetworkName[MAX_NETWORK_NAME_LENGTH];
   char sNetworkPass[MAX_NETWORK_NAME_LENGTH];
 
-  char sServerName[MAX_NETWORK_NAME_LENGTH];
-  char sServerPass[MAX_NETWORK_NAME_LENGTH];
+  /*MQTT Server Info*/
+  char sServerAddr[MAX_NETWORK_NAME_LENGTH];
   char sUserName[MAX_NETWORK_NAME_LENGTH];
   char sUserPass[MAX_NETWORK_NAME_LENGTH];
 
@@ -93,7 +94,7 @@ void firstBootSetup(SAVE_INFO* info)
 {
   memset(info->sNetworkName, 0, MAX_NETWORK_NAME_LENGTH);
   memset(info->sNetworkPass, 0, MAX_NETWORK_NAME_LENGTH);
-  memset(info->sServerName, 0, MAX_NETWORK_NAME_LENGTH);
+  memset(info->sServerAddr, 0, MAX_NETWORK_NAME_LENGTH);
   memset(info->sServerPass, 0, MAX_NETWORK_NAME_LENGTH);
 }
 
@@ -120,7 +121,7 @@ bool RecoverInfo()
     LOG << "Saved info is valid";
     LOG << "Device name " << sDeviceName;
     LOG << "Network info " << SavedInfoMirror.sNetworkName << " " << SavedInfoMirror.sNetworkPass;
-    LOG << "MQTT info " << SavedInfoMirror.sServerName << " " << SavedInfoMirror.sServerPass;
+    LOG << "MQTT info " << SavedInfoMirror.sServerAddr << " " << SavedInfoMirror.sServerPass;
 
     memcpy(&SavedInfo, &SavedInfoMirror, sizeof(SAVE_INFO));
 
@@ -137,7 +138,7 @@ bool RecoverInfo()
     LOG << "Treating as first boot";
     LOG << "Device name " << sDeviceName;
     LOG << "Network info " << SavedInfoMirror.sNetworkName << " " << SavedInfoMirror.sNetworkPass;
-    LOG << "MQTT info " << SavedInfoMirror.sServerName << " " << SavedInfoMirror.sServerPass;
+    LOG << "MQTT info " << SavedInfoMirror.sServerAddr << " " << SavedInfoMirror.sUserName << " " << SavedInfoMirror.sUserPass;
 
     return true;
 #endif
@@ -267,7 +268,17 @@ void DisconnectFromServer()
 
 void ConnectToServer()
 {
-
+  if (serverState == DISCONNECTED)
+  {
+    mqttClient.setServer(SavedInfo.sServerAddr);
+        
+    if (strlen(SavedInfo.sUserName))
+      mqttClient.connect(sDeviceName, SavedInfo.sUserName, SavedInfo.sUserPass);
+    else
+      mqttClient.connect(sDeviceName);
+      
+    serverState = CONNECTING_TO_AP;
+  }
 }
 
 /*MESSAGE HANDLERS*/
@@ -359,26 +370,15 @@ void HandleReboot(uint8_t* buf)
 void HandleSetServerName(uint8_t* buf)
 {
   LOG << "HandleSetServerName";
-  strcpy(SavedInfo.sServerName, (char*)buf);
-}
-
-void HandleSetServerPass(uint8_t* buf)
-{
-  LOG << "HandleSetServerPass";
-  strcpy(SavedInfo.sServerPass, (char*)buf);
+  strcpy(SavedInfo.sServerAddr, (char*)buf);
 }
 
 void HandleGetServerName(uint8_t* buf)
 {
   LOG << "HandleGetServerName";
-  serInterface.sendCommand(GET_SERVER_NAME, SavedInfo.sServerName, strlen(SavedInfo.sServerName));
+  serInterface.sendCommand(GET_SERVER_NAME, SavedInfo.sServerAddr, strlen(SavedInfo.sServerAddr));
 }
 
-void HandleGetServerPass(uint8_t* buf)
-{
-  LOG << "HandleGetServerPass";
-  serInterface.sendCommand(GET_SERVER_PASS, SavedInfo.sServerPass, strlen(SavedInfo.sServerPass));
-}
 
 void SetupMessageHandlers()
 {
@@ -436,6 +436,7 @@ void MonitorNetworkStatus()
   {
     if (networkState == DISCONNECTED)
     {
+      /*Diconnect the server without a WiFi connection*/
       serverState = DISCONNECTED;
       WiFi.mode(WIFI_OFF);
     }
@@ -459,12 +460,12 @@ void MonitorServerConnection()
 {
   if (serverState == CONNECTING_TO_AP)
   {
-    if(mqttClient.connected())
+    if (mqttClient.connected())
       serverState = CONNECTED_TO_AP;
   }
-  else if(serverState == CONNECTED_TO_AP)
+  else if (serverState == CONNECTED_TO_AP)
   {
-    if(!mqttClient.connected())
+    if (!mqttClient.connected())
       serverState = DISCONNECTED;
   }
 
@@ -509,6 +510,6 @@ void loop()
 
   MonitorNetworkStatus();
   MonitorServerConnection();
-  
+
   helper.background();
 }
