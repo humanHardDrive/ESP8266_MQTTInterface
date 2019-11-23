@@ -289,12 +289,13 @@ void StartAP()
 /*MQTT SERVER FUNCTIONS*/
 void DisconnectFromServer()
 {
-
+  if(serverState == CONNECTED_TO_AP)
+    serverState = DISCONNECTED;
 }
 
 void ConnectToServer()
 {
-  if (serverState == DISCONNECTED)
+  if (networkState == CONNECTED_TO_AP && serverState == DISCONNECTED)
   {
     if (strlen(SavedInfo.sServerAddr) && SavedInfo.nServerPort)
     {
@@ -311,6 +312,14 @@ void ConnectToServer()
     {
       LOG << "No server or port defined";
     }
+  }
+  else if(networkState != CONNECTED_TO_AP)
+  {
+    LOG << "Not connected to AP " << networkState;
+  }
+  else if(serverState != DISCONNECTED)
+  {
+    LOG << "Not disconnected from server " << serverState;
   }
 }
 
@@ -448,6 +457,18 @@ void HandleGetUserPass(uint8_t* buf)
   serInterface.sendCommand(GET_USER_PASS, SavedInfo.sUserPass, strlen(SavedInfo.sUserPass));
 }
 
+void HandleConnectToServer(uint8_t* buf)
+{
+  LOG << "HandleConnectToServer";
+  ConnectToServer();
+}
+
+void HandleDisconnectFromServer(uint8_t* buf)
+{
+  LOG << "HandleDisconnectFromServer";
+  DisconnectFromServer();
+}
+
 void SetupMessageHandlers()
 {
   serInterface.setCommandHandler(SET_NETWORK_NAME, HandleSetNetworkName);
@@ -481,6 +502,9 @@ void SetupMessageHandlers()
   serInterface.setCommandHandler(GET_SERVER_PORT, HandleGetServerPort);
   serInterface.setCommandHandler(GET_USER_NAME, HandleGetUserName);
   serInterface.setCommandHandler(GET_USER_PASS, HandleGetUserPass);
+
+  serInterface.setCommandHandler(CONNECT_TO_SERVER, HandleConnectToServer);
+  serInterface.setCommandHandler(DISCONNECT_FROM_SERVER, HandleDisconnectFromServer);
 }
 
 void MonitorNetworkStatus()
