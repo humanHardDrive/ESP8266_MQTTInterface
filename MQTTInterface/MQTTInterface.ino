@@ -7,12 +7,16 @@
 #include "SerialInterface.h"
 #include "NetworkHelper.h"
 
+/*Basic logging macro. The ESP8266 library seems to have a problem
+ * adding a __FUNCTION__ call this for some reason
+*/
 #define LOG logger << '\n' << millis() << '\t'
 
 #define _REIFB    //Recovery Error Is First Boot
 /*Send log statements out of the programming port*/
 #define PROG_DBG
 
+/*Root of the device name. The chip ID will be appended to this*/
 #define DEVICE_NAME_BASE          "mqttDev-"
 
 #define MAX_NETWORK_NAME_LENGTH   32
@@ -29,6 +33,7 @@ struct SAVE_INFO
 
   /*MQTT Server Info*/
   char sServerAddr[MAX_NETWORK_NAME_LENGTH];
+  uint16_t nServerPort;
   char sUserName[MAX_NETWORK_NAME_LENGTH];
   char sUserPass[MAX_NETWORK_NAME_LENGTH];
 
@@ -46,10 +51,15 @@ Stream& logger(dbg);
 #endif
 NetworkHelper helper;
 uint32_t nConnectionAttemptStart = 0;
+/*Connection states are monitored using these variables
+   This keeps all of the logging and notification in one centralized place
+   instead of trying to capture it in each method
+*/
 uint8_t networkState = DISCONNECTED, oldNetworkState = UNKNOWN_STATE;
+/*The MQTT server status uses the same enum but is only ever disconnected, connecting, or connected*/
 uint8_t serverState = DISCONNECTED, oldServerState = UNKNOWN_STATE;
 char sDeviceName[MAX_DEVICE_NAME_LENGTH];
-char sHexMap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+const char sHexMap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 
@@ -61,13 +71,17 @@ IPAddress subnet(255, 255, 255, 0);
 /*INFO FUNCTIONS*/
 void buildDeviceName(char* sName)
 {
+  /*Use the chip ID to build a unique identifier*/
+  /*Makes sense to use the one built in instead of creating a new one*/
   uint32_t nID = ESP.getChipId();
   char sID[MAX_DEVICE_NAME_LENGTH];
   strcpy(sName, DEVICE_NAME_BASE);
 
   memset(sID, 0, MAX_DEVICE_NAME_LENGTH);
+  /*The chip ID is 3 bytes, so 6 hex characters*/
   for (uint8_t i = 0; i < 6; i++)
   {
+    /*Reverse the bit order*/
     sID[5 - i] = sHexMap[nID & 0x0F];
     nID >>= 4;
   }
@@ -92,10 +106,16 @@ bool isSavedInfoValid(SAVE_INFO* info)
 
 void firstBootSetup(SAVE_INFO* info)
 {
+  /*Default all connection info*/
+  /*AP Info*/
   memset(info->sNetworkName, 0, MAX_NETWORK_NAME_LENGTH);
   memset(info->sNetworkPass, 0, MAX_NETWORK_NAME_LENGTH);
+
+  /*MQTT Server Info*/
   memset(info->sServerAddr, 0, MAX_NETWORK_NAME_LENGTH);
-  memset(info->sServerPass, 0, MAX_NETWORK_NAME_LENGTH);
+  info->nServerPort = 0;
+  memset(info->sUserName, 0, MAX_NETWORK_NAME_LENGTH);
+  memset(info->sUserPass, 0, MAX_NETWORK_NAME_LENGTH);
 }
 
 void SaveInfo()
@@ -121,7 +141,7 @@ bool RecoverInfo()
     LOG << "Saved info is valid";
     LOG << "Device name " << sDeviceName;
     LOG << "Network info " << SavedInfoMirror.sNetworkName << " " << SavedInfoMirror.sNetworkPass;
-    LOG << "MQTT info " << SavedInfoMirror.sServerAddr << " " << SavedInfoMirror.sServerPass;
+    LOG << "MQTT info " << SavedInfoMirror.sServerAddr << " " << SavedInfoMirror.sUserName << " " << SavedInfoMirror.sUserPass;
 
     memcpy(&SavedInfo, &SavedInfoMirror, sizeof(SAVE_INFO));
 
@@ -160,6 +180,11 @@ void reboot()
 }
 
 /*NETWORK SETUP*/
+/*Changing the WiFi mode actually takes some amount of time
+   This method changes the WiFi mode and waits for it to complete, with a timeout
+   This is most useful for AP mode where if the mode isn't set before trying to start
+   the AP, the SSID is garbage
+*/
 bool WaitForModeChange(WiFiMode mode, uint32_t timeout)
 {
   WiFi.mode(mode);
@@ -249,6 +274,7 @@ void StartAP()
     if (WaitForModeChange(WIFI_AP, 100))
     {
       WiFi.softAPConfig(local_IP, gateway, subnet);
+      /*Use the device name as the AP SSID*/
       WiFi.softAP(sDeviceName);
 
       networkState = ACTING_AS_AP;
@@ -270,14 +296,21 @@ void ConnectToServer()
 {
   if (serverState == DISCONNECTED)
   {
-    mqttClient.setServer(SavedInfo.sServerAddr);
-        
-    if (strlen(SavedInfo.sUserName))
-      mqttClient.connect(sDeviceName, SavedInfo.sUserName, SavedInfo.sUserPass);
+    if (strlen(SavedInfo.sServerAddr) && SavedInfo.nServerPort)
+    {
+      mqttClient.setServer(SavedInfo.sServerAddr, SavedInfo.nServerPort);
+
+      if (strlen(SavedInfo.sUserName))
+        mqttClient.connect(sDeviceName, SavedInfo.sUserName, SavedInfo.sUserPass);
+      else
+        mqttClient.connect(sDeviceName);
+
+      serverState = CONNECTING_TO_AP;
+    }
     else
-      mqttClient.connect(sDeviceName);
-      
-    serverState = CONNECTING_TO_AP;
+    {
+      LOG << "No server or port defined";
+    }
   }
 }
 
@@ -367,18 +400,53 @@ void HandleReboot(uint8_t* buf)
   reboot();
 }
 
-void HandleSetServerName(uint8_t* buf)
+void HandleSetServerAddr(uint8_t* buf)
 {
   LOG << "HandleSetServerName";
   strcpy(SavedInfo.sServerAddr, (char*)buf);
 }
 
-void HandleGetServerName(uint8_t* buf)
+void HandleSetServerPort(uint8_t* buf)
 {
-  LOG << "HandleGetServerName";
-  serInterface.sendCommand(GET_SERVER_NAME, SavedInfo.sServerAddr, strlen(SavedInfo.sServerAddr));
+  LOG << "HandleSetServerPort";
+  memcpy(&SavedInfo.nServerPort, buf, sizeof(SavedInfo.nServerPort));
 }
 
+void HandleSetUserName(uint8_t* buf)
+{
+  LOG << "HandleSetUserName";
+  strcpy(SavedInfo.sUserName, (char*)buf);
+}
+
+void HandleSetUserPass(uint8_t* buf)
+{
+  LOG << "HandleSetUserPass";
+  strcpy(SavedInfo.sUserPass, (char*)buf);
+}
+
+void HandleGetServerAddr(uint8_t* buf)
+{
+  LOG << "HandleGetServerName";
+  serInterface.sendCommand(GET_SERVER_ADDR, SavedInfo.sServerAddr, strlen(SavedInfo.sServerAddr));
+}
+
+void HandleGetServerPort(uint8_t* buf)
+{
+  LOG << "HandleGetServerPort";
+  serInterface.sendCommand(GET_SERVER_PORT, &SavedInfo.nServerPort, sizeof(SavedInfo.nServerPort));
+}
+
+void HandleGetUserName(uint8_t* buf)
+{
+  LOG << "HandleGetUserName";
+  serInterface.sendCommand(GET_USER_NAME, SavedInfo.sUserName, strlen(SavedInfo.sUserName));
+}
+
+void HandleGetUserPass(uint8_t* buf)
+{
+  LOG << "HandleGetUserPass";
+  serInterface.sendCommand(GET_USER_PASS, SavedInfo.sUserPass, strlen(SavedInfo.sUserPass));
+}
 
 void SetupMessageHandlers()
 {
@@ -403,6 +471,16 @@ void SetupMessageHandlers()
   serInterface.setCommandHandler(GET_CONNECTION_STATE, HandleGetConnectionState);
 
   serInterface.setCommandHandler(REBOOT, HandleReboot);
+
+  serInterface.setCommandHandler(SET_SERVER_ADDR, HandleSetServerAddr);
+  serInterface.setCommandHandler(SET_SERVER_PORT, HandleSetServerPort);
+  serInterface.setCommandHandler(SET_USER_NAME, HandleSetUserName);
+  serInterface.setCommandHandler(SET_USER_PASS, HandleSetUserPass);
+
+  serInterface.setCommandHandler(GET_SERVER_ADDR, HandleGetServerAddr);
+  serInterface.setCommandHandler(GET_SERVER_PORT, HandleGetServerPort);
+  serInterface.setCommandHandler(GET_USER_NAME, HandleGetUserName);
+  serInterface.setCommandHandler(GET_USER_PASS, HandleGetUserPass);
 }
 
 void MonitorNetworkStatus()
