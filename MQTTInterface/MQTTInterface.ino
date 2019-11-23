@@ -317,14 +317,14 @@ void ConnectToServer()
 /*MESSAGE HANDLERS*/
 void HandleSetNetworkName(uint8_t* buf)
 {
-  LOG << "HandleSetNetworkName";
   strcpy(SavedInfo.sNetworkName, (char*)buf);
+  LOG << "HandleSetNetworkName" << " " << SavedInfo.sNetworkName;
 }
 
 void HandleSetNetworkPass(uint8_t* buf)
 {
-  LOG << "HandleSetNetworkPass";
   strcpy(SavedInfo.sNetworkPass, (char*)buf);
+  LOG << "HandleSetNetworkPass" << " " << SavedInfo.sNetworkPass;
 }
 
 /*These should return the current network name, saved in flash or not*/
@@ -402,26 +402,26 @@ void HandleReboot(uint8_t* buf)
 
 void HandleSetServerAddr(uint8_t* buf)
 {
-  LOG << "HandleSetServerName";
   strcpy(SavedInfo.sServerAddr, (char*)buf);
+  LOG << "HandleSetServerName" << " " << SavedInfo.sServerAddr;
 }
 
 void HandleSetServerPort(uint8_t* buf)
 {
-  LOG << "HandleSetServerPort";
   memcpy(&SavedInfo.nServerPort, buf, sizeof(SavedInfo.nServerPort));
+  LOG << "HandleSetServerPort" << " " << SavedInfo.nServerPort;
 }
 
 void HandleSetUserName(uint8_t* buf)
 {
-  LOG << "HandleSetUserName";
   strcpy(SavedInfo.sUserName, (char*)buf);
+  LOG << "HandleSetUserName" << " " << SavedInfo.sUserName;
 }
 
 void HandleSetUserPass(uint8_t* buf)
 {
-  LOG << "HandleSetUserPass";
   strcpy(SavedInfo.sUserPass, (char*)buf);
+  LOG << "HandleSetUserPass" << " " << SavedInfo.sUserPass;
 }
 
 void HandleGetServerAddr(uint8_t* buf)

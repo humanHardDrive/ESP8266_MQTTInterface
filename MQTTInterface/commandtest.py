@@ -2,6 +2,8 @@ import argparse
 import serial
 
 cmdMap = {
+	"setNetworkName" : 0x01,
+	"setNetworkPass" : 0x02,
 	"getNetworkName" : 0x03,
 	"getNetworkPass": 0x04,
 	"getDeviceName" : 0x05,
@@ -14,6 +16,10 @@ cmdMap = {
 	"save" : 0x0e,
 	"getConnectionState" : 0x0f,
 	"reboot" : 0x10,
+	"setServerAddr" : 0x11,
+	"setServerPort" : 0x12,
+	"setUserName" : 0x13,
+	"setUserPass" : 0x14,
 	"getServerAddr" : 0x15,
 	"getServerPort" : 0x16,
 	"getUserName" : 0x17,
@@ -54,8 +60,6 @@ else:
 		msg.append(ord(c))
 		
 msg.append(0xaa) #ETX
-
-print(msg)
 
 bMsg = bytes(msg)
 comPort.write(msg)

@@ -102,5 +102,17 @@ void SerialInterface::WaitingForETXState(uint8_t c)
     //If a handler exists for this command code, call it
     if (m_CmdHandler.find(m_CurrentCommand) != m_CmdHandler.end())
       m_CmdHandler[m_CurrentCommand](m_CurrentCommandBuf);
+    else if (m_CmdHandler.find(INVALID_CMD) != m_CmdHandler.end())
+      m_CmdHandler[INVALID_CMD](m_CurrentCommandBuf);
+  }
+  else if (c == SERIAL_STX)
+  {
+    WaitingForSTXState(c);
+
+    //If a handler exists for this command code, call it
+    if (m_CmdHandler.find(m_CurrentCommand) != m_CmdHandler.end())
+      m_CmdHandler[m_CurrentCommand](m_CurrentCommandBuf);
+    else if (m_CmdHandler.find(INVALID_CMD) != m_CmdHandler.end())
+      m_CmdHandler[INVALID_CMD](m_CurrentCommandBuf);
   }
 }
