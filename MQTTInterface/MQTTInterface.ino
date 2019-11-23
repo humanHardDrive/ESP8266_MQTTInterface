@@ -554,6 +554,7 @@ void MonitorServerConnection()
 
     LOG << "Server connection status changed to " << serverState << " from " << oldServerState;
     serInterface.sendCommand(MQTT_STATE_CHANGE, &serverState, sizeof(serverState));
+    oldServerState = serverState;
   }
 }
 
