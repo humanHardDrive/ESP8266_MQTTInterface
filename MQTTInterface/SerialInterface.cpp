@@ -60,8 +60,7 @@ void SerialInterface::WaitingForSTXState(uint8_t c)
     //bytes received
     m_CurrentCommand =
       m_CommandDataCount = 0;
-    //The data buffer isn't reset because only the number of bytes
-    //written is needed
+    memset(m_CurrentCommandBuf, 0, sizeof(m_CurrentCommandBuf));
   }
 }
 
