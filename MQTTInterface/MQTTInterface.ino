@@ -4,6 +4,9 @@
 #include <Streaming.h>
 #include <ESP8266WiFi.h>
 
+#define VERSION_MAJOR   0
+#define VERSION_MINOR   0
+
 #include "SerialInterface.h"
 #include "NetworkHelper.h"
 
@@ -43,7 +46,7 @@ struct SAVE_INFO
 /*GLOBALS*/
 SAVE_INFO SavedInfo, SavedInfoMirror;
 SerialInterface serInterface;
-SoftwareSerial dbg(DBG_TX_PIN, DBG_RX_PIN, false, 256);
+SoftwareSerial dbg(DBG_TX_PIN, DBG_RX_PIN, false);
 #ifdef PROG_DBG
 Stream& logger(Serial);
 #else
@@ -469,6 +472,16 @@ void HandleDisconnectFromServer(uint8_t* buf)
   DisconnectFromServer();
 }
 
+void HandleVersion(uint8_t* buf)
+{
+  uint16_t verBuf[2];
+  LOG << "HandleVersion";
+  
+  verBuf[0] = VERSION_MAJOR;
+  verBuf[1] = VERSION_MINOR;
+  serInterface.sendCommand(VERSION, verBuf, sizeof(verBuf));
+}
+
 void SetupMessageHandlers()
 {
   serInterface.setCommandHandler(SET_NETWORK_NAME, HandleSetNetworkName);
@@ -505,6 +518,8 @@ void SetupMessageHandlers()
 
   serInterface.setCommandHandler(CONNECT_TO_SERVER, HandleConnectToServer);
   serInterface.setCommandHandler(DISCONNECT_FROM_SERVER, HandleDisconnectFromServer);
+
+  serInterface.setCommandHandler(VERSION, HandleVersion);
 }
 
 void MonitorNetworkStatus()
