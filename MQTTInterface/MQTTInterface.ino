@@ -497,6 +497,14 @@ void HandleTime(uint8_t* buf)
   serInterface.sendCommand(TIME, &currentTime, sizeof(currentTime));
 }
 
+void HandleSetTimeOffset(uint8_t* buf)
+{
+  int32_t nTimeOffset = *((int32_t*)buf);
+  LOG << "HandleSetTimeOffset";
+
+  timeClient.setTimeOffset(nTimeOffset);
+}
+
 void SetupMessageHandlers()
 {
   serInterface.setCommandHandler(SET_NETWORK_NAME, HandleSetNetworkName);
@@ -537,6 +545,7 @@ void SetupMessageHandlers()
   serInterface.setCommandHandler(VERSION, HandleVersion);
 
   serInterface.setCommandHandler(TIME, HandleTime);
+  serInterface.setCommandHandler(SET_TIME_OFFSET, HandleSetTimeOffset);
 }
 
 void MonitorNetworkStatus()
