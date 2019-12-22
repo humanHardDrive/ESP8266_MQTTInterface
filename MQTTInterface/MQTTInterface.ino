@@ -27,6 +27,7 @@
 #define MAX_NETWORK_NAME_LENGTH   32
 #define MAX_DEVICE_NAME_LENGTH    16
 
+#define STATUS_PIN  4
 #define DBG_TX_PIN  14
 #define DBG_RX_PIN  15
 
@@ -63,9 +64,9 @@ uint32_t nConnectionAttemptStart = 0;
    This keeps all of the logging and notification in one centralized place
    instead of trying to capture it in each method
 */
-uint8_t networkState = DISCONNECTED, oldNetworkState = UNKNOWN_STATE;
+uint8_t networkState = DISCONNECTED, oldNetworkState = DISCONNECTED;
 /*The MQTT server status uses the same enum but is only ever disconnected, connecting, or connected*/
-uint8_t serverState = DISCONNECTED, oldServerState = UNKNOWN_STATE;
+uint8_t serverState = DISCONNECTED, oldServerState = DISCONNECTED;
 char sDeviceName[MAX_DEVICE_NAME_LENGTH];
 const char sHexMap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 WiFiClient wifiClient;
@@ -657,13 +658,18 @@ void setup()
 {
   delay(1000);
 
+  /*Startup EEPROM*/
   EEPROM.begin(sizeof(SAVE_INFO));
+  /*Disable persistant WiFi info. The code handles that*/
   WiFi.persistent(false);
 
-  randomSeed(micros());
-
+  /*Setup serial*/
   Serial.begin(57600);
   dbg.begin(57600);
+
+  /*Setup pins*/
+  pinMode(STATUS_PIN, OUTPUT);
+  digitalWrite(STATUS_PIN, HIGH);
 
   buildDeviceName(sDeviceName);
   RecoverInfo();
@@ -677,6 +683,8 @@ void setup()
   {
     UpdateNetworkInfo(ssid, password);
   });
+
+  digitalWrite(STATUS_PIN, LOW);
 }
 
 void loop()
