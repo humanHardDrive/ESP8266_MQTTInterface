@@ -17,7 +17,7 @@
 
 #define _REIFB    //Recovery Error Is First Boot
 /*Send log statements out of the programming port*/
-#define PROG_DBG
+//#define PROG_DBG
 
 /*Root of the device name. The chip ID will be appended to this*/
 #define DEVICE_NAME_BASE          "mqttDev-"
@@ -606,8 +606,8 @@ void setup()
 
   randomSeed(micros());
 
-  Serial.begin(115200);
-  dbg.begin(115200);
+  Serial.begin(57600);
+  dbg.begin(57600);
 
   buildDeviceName(sDeviceName);
   RecoverInfo();

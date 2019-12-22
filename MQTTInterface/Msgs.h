@@ -1,8 +1,6 @@
 #ifndef __MSGS_H__
 #define __MSGS_H__
 
-#include <cstdint>
-
 #define MAX_PAYLOAD_SIZE  128
 
 struct MSG_BODY
