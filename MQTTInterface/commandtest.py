@@ -26,7 +26,8 @@ cmdMap = {
 	"getUserPass" : 0x18,
 	"connectToServer" : 0x19,
 	"disconnectFromServer" : 0x1a,
-	"version" : 0x1b
+	"version" : 0x1b,
+	"time": 0x1c
 }
 
 parser = argparse.ArgumentParser(description='MQTT Interface Command Test')

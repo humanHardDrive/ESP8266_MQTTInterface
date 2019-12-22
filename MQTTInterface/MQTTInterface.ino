@@ -488,6 +488,15 @@ void HandleVersion(uint8_t* buf)
   serInterface.sendCommand(VERSION, verBuf, sizeof(verBuf));
 }
 
+void HandleTime(uint8_t* buf)
+{
+  uint32_t currentTime;
+  LOG << "HandleTime";
+
+  currentTime = timeClient.getEpochTime();
+  serInterface.sendCommand(TIME, &currentTime, sizeof(currentTime));
+}
+
 void SetupMessageHandlers()
 {
   serInterface.setCommandHandler(SET_NETWORK_NAME, HandleSetNetworkName);
@@ -526,6 +535,8 @@ void SetupMessageHandlers()
   serInterface.setCommandHandler(DISCONNECT_FROM_SERVER, HandleDisconnectFromServer);
 
   serInterface.setCommandHandler(VERSION, HandleVersion);
+
+  serInterface.setCommandHandler(TIME, HandleTime);
 }
 
 void MonitorNetworkStatus()
@@ -626,6 +637,8 @@ void setup()
   RecoverInfo();
 
   SetupMessageHandlers();
+
+  timeClient.begin();
 
   helper.onNetworkChange(
     [](String ssid, String password)
