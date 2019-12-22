@@ -13,7 +13,7 @@
 #include "NetworkHelper.h"
 
 /*Basic logging macro. The ESP8266 library seems to have a problem
- * adding a __FUNCTION__ call this for some reason
+   adding a __FUNCTION__ call this for some reason
 */
 #define LOG logger << '\n' << millis() << '\t'
 
@@ -29,6 +29,8 @@
 
 #define DBG_TX_PIN  14
 #define DBG_RX_PIN  15
+
+#define TIME_UPDATE_PERIOD  60000
 
 struct SAVE_INFO
 {
@@ -71,6 +73,7 @@ WiFiUDP ntpUDP;
 PubSubClient mqttClient(wifiClient);
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 0);
 uint32_t nLastTimeRequest = 0;
+bool bConnectedToInternet = false;
 
 /*ACCESS POINT CONFIGURATION*/
 IPAddress local_IP(192, 168, 1, 1);
@@ -298,13 +301,13 @@ void StartAP()
 /*MQTT SERVER FUNCTIONS*/
 void DisconnectFromServer()
 {
-  if(serverState == CONNECTED_TO_AP)
+  if (serverState == CONNECTED_TO_AP)
     serverState = DISCONNECTED;
 }
 
 void ConnectToServer()
 {
-  if (networkState == CONNECTED_TO_AP && serverState == DISCONNECTED)
+  if ((networkState == CONNECTED_TO_AP) && serverState == DISCONNECTED)
   {
     if (strlen(SavedInfo.sServerAddr) && SavedInfo.nServerPort)
     {
@@ -322,11 +325,11 @@ void ConnectToServer()
       LOG << "No server or port defined";
     }
   }
-  else if(networkState != CONNECTED_TO_AP)
+  else if (networkState != CONNECTED_TO_AP)
   {
     LOG << "Not connected to AP " << networkState;
   }
-  else if(serverState != DISCONNECTED)
+  else if (serverState != DISCONNECTED)
   {
     LOG << "Not disconnected from server " << serverState;
   }
@@ -482,7 +485,7 @@ void HandleVersion(uint8_t* buf)
 {
   uint16_t verBuf[2];
   LOG << "HandleVersion";
-  
+
   verBuf[0] = VERSION_MAJOR;
   verBuf[1] = VERSION_MINOR;
   serInterface.sendCommand(VERSION, verBuf, sizeof(verBuf));
@@ -493,7 +496,11 @@ void HandleTime(uint8_t* buf)
   uint32_t currentTime;
   LOG << "HandleTime";
 
-  currentTime = timeClient.getEpochTime();
+  if (bConnectedToInternet)
+    currentTime = timeClient.getEpochTime();
+  else
+    currentTime = 0;
+
   serInterface.sendCommand(TIME, &currentTime, sizeof(currentTime));
 }
 
@@ -555,7 +562,16 @@ void MonitorNetworkStatus()
   {
     /*Connected is the easy case*/
     if (WiFi.status() == WL_CONNECTED)
+    {
       networkState = CONNECTED_TO_AP;
+
+      if (timeClient.forceUpdate())
+      {
+        bConnectedToInternet = true;
+        networkState = CONNECTED_TO_AP;
+        nLastTimeRequest = millis();
+      }
+    }
     /*Any other status besides idle (no ssid avail, connect failed) is considered disconnected*/
     else if (WiFi.status() == WL_NO_SSID_AVAIL)
     {
@@ -575,10 +591,16 @@ void MonitorNetworkStatus()
   }
 
   /*Do stuff when connected to AP*/
-  if(networkState == CONNECTED_TO_AP)
+  if (networkState == CONNECTED_TO_AP)
   {
-    if((millis() - nLastTimeRequest) > 1000)
-      timeClient.update();
+    if ((millis() - nLastTimeRequest) > TIME_UPDATE_PERIOD)
+    {
+      if (!timeClient.update())
+      {
+        bConnectedToInternet = false;
+        LOG << "Couldn't get time from server";
+      }
+    }
   }
 
   /*Only on change*/
@@ -588,6 +610,7 @@ void MonitorNetworkStatus()
     {
       /*Diconnect the server without a WiFi connection*/
       serverState = DISCONNECTED;
+      bConnectedToInternet = false;
       WiFi.mode(WIFI_OFF);
     }
 
