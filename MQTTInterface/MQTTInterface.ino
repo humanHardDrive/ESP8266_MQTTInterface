@@ -3,6 +3,8 @@
 #include <EEPROM.h>
 #include <Streaming.h>
 #include <ESP8266WiFi.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
 #define VERSION_MAJOR   0
 #define VERSION_MINOR   0
@@ -64,7 +66,9 @@ uint8_t serverState = DISCONNECTED, oldServerState = UNKNOWN_STATE;
 char sDeviceName[MAX_DEVICE_NAME_LENGTH];
 const char sHexMap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 WiFiClient wifiClient;
+WiFiUDP ntpUDP;
 PubSubClient mqttClient(wifiClient);
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 0);
 
 /*ACCESS POINT CONFIGURATION*/
 IPAddress local_IP(192, 168, 1, 1);
