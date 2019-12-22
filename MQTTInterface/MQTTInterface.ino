@@ -54,6 +54,7 @@ Stream& logger(Serial);
 #else
 Stream& logger(dbg);
 #endif
+
 NetworkHelper helper;
 uint32_t nConnectionAttemptStart = 0;
 /*Connection states are monitored using these variables
@@ -69,6 +70,7 @@ WiFiClient wifiClient;
 WiFiUDP ntpUDP;
 PubSubClient mqttClient(wifiClient);
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 0);
+uint32_t nLastTimeRequest = 0;
 
 /*ACCESS POINT CONFIGURATION*/
 IPAddress local_IP(192, 168, 1, 1);
@@ -550,6 +552,13 @@ void MonitorNetworkStatus()
       LOG << "Connection timeout";
       networkState = DISCONNECTED;
     }
+  }
+
+  /*Do stuff when connected to AP*/
+  if(networkState == CONNECTED_TO_AP)
+  {
+    if((millis() - nLastTimeRequest) > 1000)
+      timeClient.update();
   }
 
   /*Only on change*/
