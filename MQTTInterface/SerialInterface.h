@@ -4,8 +4,9 @@
 
 #include "Msgs.h"
 
-#define SERIAL_STX  0x55
-#define SERIAL_ETX  0xAA
+#define SERIAL_STX    0x55
+#define SERIAL_ETX    0xAA
+#define IDLE_TIMEOUT  10
 
 #define COMMAND_BUFFER_LEN    128
 

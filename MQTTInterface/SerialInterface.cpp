@@ -9,10 +9,8 @@ SerialInterface::~SerialInterface() =
 
 void SerialInterface::update(uint8_t c)
 {
-  //Reset the parse state if a character hasn't been received
-  //in 10ms
-  //TODO: remove the magic number 10
-  if ((millis() - m_LastRXTime) > 10 &&
+  //Reset the parse state if a character hasn't been received in IDLE_TIMEOUT ms
+  if ((millis() - m_LastRXTime) > IDLE_TIMEOUT &&
       m_ParseState != WAITING_FOR_STX)
     m_ParseState = WAITING_FOR_STX;
 

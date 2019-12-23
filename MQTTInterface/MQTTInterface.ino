@@ -64,9 +64,9 @@ uint32_t nConnectionAttemptStart = 0;
    This keeps all of the logging and notification in one centralized place
    instead of trying to capture it in each method
 */
-uint8_t networkState = DISCONNECTED, oldNetworkState = DISCONNECTED;
+uint8_t networkState = DISCONNECTED, oldNetworkState = UNKNOWN_STATE;
 /*The MQTT server status uses the same enum but is only ever disconnected, connecting, or connected*/
-uint8_t serverState = DISCONNECTED, oldServerState = DISCONNECTED;
+uint8_t serverState = DISCONNECTED, oldServerState = UNKNOWN_STATE;
 char sDeviceName[MAX_DEVICE_NAME_LENGTH];
 const char sHexMap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 WiFiClient wifiClient;
