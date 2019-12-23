@@ -656,6 +656,10 @@ void MonitorServerConnection()
 
 void setup()
 {
+  /*Setup pins*/
+  pinMode(STATUS_PIN, OUTPUT);
+  digitalWrite(STATUS_PIN, HIGH);
+
   delay(1000);
 
   /*Startup EEPROM*/
@@ -666,10 +670,6 @@ void setup()
   /*Setup serial*/
   Serial.begin(57600);
   dbg.begin(57600);
-
-  /*Setup pins*/
-  pinMode(STATUS_PIN, OUTPUT);
-  digitalWrite(STATUS_PIN, HIGH);
 
   buildDeviceName(sDeviceName);
   RecoverInfo();
