@@ -153,6 +153,13 @@ bool RecoverInfo()
     LOG << "Network info " << SavedInfoMirror.sNetworkName << " " << SavedInfoMirror.sNetworkPass;
     LOG << "MQTT info " << SavedInfoMirror.sServerAddr << " " << SavedInfoMirror.sUserName << " " << SavedInfoMirror.sUserPass;
 
+    LOG << "Subscription list: ";
+    for(unsigned int i = 0; i < MAX_SUBS; i++)
+    {
+      if(SavedInfoMirror.sSubList[i][0])
+        LOG << SavedInfoMirror.sSubList[i];
+    }
+
     memcpy(&SavedInfo, &SavedInfoMirror, sizeof(SAVE_INFO));
 
     return true;
@@ -167,8 +174,6 @@ bool RecoverInfo()
 
     LOG << "Treating as first boot";
     LOG << "Device name " << sDeviceName;
-    LOG << "Network info " << SavedInfoMirror.sNetworkName << " " << SavedInfoMirror.sNetworkPass;
-    LOG << "MQTT info " << SavedInfoMirror.sServerAddr << " " << SavedInfoMirror.sUserName << " " << SavedInfoMirror.sUserPass;
 
     return true;
 #endif
