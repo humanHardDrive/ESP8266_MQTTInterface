@@ -246,12 +246,12 @@ void ConnectToAP()
 {
   if (networkState != CONNECTED_TO_AP)
   {
-    if (strlen(SavedInfo.sNetworkName))
+    if (SavedInfo.sNetworkName[0])
     {
       GenericDisconnect();
       if (WaitForModeChange(WIFI_STA, 100))
       {
-        if (strlen(SavedInfo.sNetworkPass))
+        if (SavedInfo.sNetworkPass[0])
           WiFi.begin(SavedInfo.sNetworkName, SavedInfo.sNetworkPass);
         else
           WiFi.begin(SavedInfo.sNetworkName);
@@ -307,11 +307,11 @@ void ConnectToServer()
 {
   if ((networkState == CONNECTED_TO_AP) && serverState == DISCONNECTED)
   {
-    if (strlen(SavedInfo.sServerAddr) && SavedInfo.nServerPort)
+    if (SavedInfo.sServerAddr[0] && SavedInfo.nServerPort)
     {
       mqttClient.setServer(SavedInfo.sServerAddr, SavedInfo.nServerPort);
 
-      if (strlen(SavedInfo.sUserName))
+      if (SavedInfo.sUserName[0])
         mqttClient.connect(sDeviceName, SavedInfo.sUserName, SavedInfo.sUserPass);
       else
         mqttClient.connect(sDeviceName);
