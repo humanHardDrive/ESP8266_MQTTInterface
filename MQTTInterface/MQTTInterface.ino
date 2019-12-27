@@ -26,6 +26,8 @@
 
 #define MAX_NETWORK_NAME_LENGTH   32
 #define MAX_DEVICE_NAME_LENGTH    16
+#define MAX_SUB_PATH_LENGTH       64
+#define MAX_SUBS                  16
 
 #define STATUS_PIN  4
 #define DBG_TX_PIN  14
@@ -44,6 +46,9 @@ struct SAVE_INFO
   uint16_t nServerPort;
   char sUserName[MAX_NETWORK_NAME_LENGTH];
   char sUserPass[MAX_NETWORK_NAME_LENGTH];
+
+  /*MQTT Subscription List*/
+  char sSubList[MAX_SUBS][MAX_SUB_PATH_LENGTH];
 
   uint32_t checksum;
 };
@@ -120,15 +125,7 @@ bool isSavedInfoValid(SAVE_INFO* info)
 void firstBootSetup(SAVE_INFO* info)
 {
   /*Default all connection info*/
-  /*AP Info*/
-  memset(info->sNetworkName, 0, MAX_NETWORK_NAME_LENGTH);
-  memset(info->sNetworkPass, 0, MAX_NETWORK_NAME_LENGTH);
-
-  /*MQTT Server Info*/
-  memset(info->sServerAddr, 0, MAX_NETWORK_NAME_LENGTH);
-  info->nServerPort = 0;
-  memset(info->sUserName, 0, MAX_NETWORK_NAME_LENGTH);
-  memset(info->sUserPass, 0, MAX_NETWORK_NAME_LENGTH);
+  memset(info, 0, sizeof(SAVE_INFO));
 }
 
 void SaveInfo()
@@ -647,6 +644,15 @@ void MonitorServerConnection()
   {
     if (serverState == DISCONNECTED)
       mqttClient.disconnect();
+
+    if(serverState == CONNECTED_TO_AP)
+    {
+      for(unsigned int i = 0; i < MAX_SUBS; i++)
+      {
+        if(SavedInfo.sSubList[i][0])
+          mqttClient.subscribe(SavedInfo.sSubList[i]);
+      }
+    }
 
     LOG << "Server connection status changed to " << serverState << " from " << oldServerState;
     serInterface.sendCommand(MQTT_STATE_CHANGE, &serverState, sizeof(serverState));
