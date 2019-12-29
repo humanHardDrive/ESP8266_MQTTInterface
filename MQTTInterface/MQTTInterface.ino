@@ -564,6 +564,8 @@ void SetupMessageHandlers()
 
   serInterface.setCommandHandler(TIME, HandleTime);
   serInterface.setCommandHandler(SET_TIME_OFFSET, HandleSetTimeOffset);
+
+  serInterface.setCommandHandler(GET_IP, HandleGetIP);
 }
 
 void MonitorNetworkStatus()
