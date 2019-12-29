@@ -15,7 +15,7 @@
 /*Basic logging macro. The ESP8266 library seems to have a problem
    adding a __FUNCTION__ call this for some reason
 */
-#define LOG logger << '\n' << millis() << '\t'
+#define LOG logger << "\n\r" << millis() << '\t'
 
 #define _REIFB    //Recovery Error Is First Boot
 /*Send log statements out of the programming port*/
@@ -56,7 +56,7 @@ struct SAVE_INFO
 /*GLOBALS*/
 SAVE_INFO SavedInfo, SavedInfoMirror;
 SerialInterface serInterface;
-SoftwareSerial dbg(DBG_TX_PIN, DBG_RX_PIN, false);
+SoftwareSerial dbg(DBG_RX_PIN, DBG_TX_PIN, false);
 #ifdef PROG_DBG
 Stream& logger(Serial);
 #else
