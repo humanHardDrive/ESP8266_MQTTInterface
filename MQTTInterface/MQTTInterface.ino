@@ -151,7 +151,7 @@ bool RecoverInfo()
     LOG << "Saved info is valid";
     LOG << "Device name " << sDeviceName;
     LOG << "Network info " << SavedInfoMirror.sNetworkName << " " << SavedInfoMirror.sNetworkPass;
-    LOG << "MQTT info " << SavedInfoMirror.sServerAddr << " " << SavedInfoMirror.sUserName << " " << SavedInfoMirror.sUserPass;
+    LOG << "MQTT info " << SavedInfoMirror.sServerAddr << ":" << SavedInfoMirror.nServerPort << " " << SavedInfoMirror.sUserName << " " << SavedInfoMirror.sUserPass;
 
     LOG << "Subscription list: ";
     for (unsigned int i = 0; i < MAX_SUBS; i++)
