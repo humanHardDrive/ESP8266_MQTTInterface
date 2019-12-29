@@ -648,7 +648,7 @@ void UpdateServerInfo(String sServerAddr, uint16_t nServerPort, String sUserName
   SavedInfo.nServerPort = nServerPort;
   strcpy(SavedInfo.sUserName, sUserName.c_str());
   strcpy(SavedInfo.sUserPass, sUserPass.c_str());
-  
+
   LOG << "Server Change " << sServerAddr << ":" << nServerPort << " " << sUserName << " " << sUserPass;
 }
 
@@ -663,6 +663,8 @@ void MonitorServerConnection()
   {
     if (!mqttClient.connected())
       serverState = DISCONNECTED;
+    else
+      mqttClient.loop();
   }
 
   if (serverState != oldServerState)
