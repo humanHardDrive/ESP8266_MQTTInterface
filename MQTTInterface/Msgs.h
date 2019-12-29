@@ -45,6 +45,7 @@ enum CMD_TYPE
   VERSION,
   TIME,
   SET_TIME_OFFSET,
+  GET_IP,
   INVALID_CMD,
 
   /*NOTIFY*/

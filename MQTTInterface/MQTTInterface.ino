@@ -30,8 +30,8 @@
 #define MAX_SUBS                  16
 
 #define STATUS_PIN  4
-#define DBG_TX_PIN  14
-#define DBG_RX_PIN  15
+#define DBG_TX_PIN  12
+#define DBG_RX_PIN  14
 
 #define TIME_UPDATE_PERIOD  60000
 
@@ -513,6 +513,14 @@ void HandleSetTimeOffset(uint8_t* buf)
   LOG << "HandleSetTimeOffset";
 
   timeClient.setTimeOffset(nTimeOffset);
+}
+
+void HandleGetIP(uint8_t* buf)
+{
+  uint32_t byteIP = WiFi.localIP();
+  LOG << "HandleGetIP";
+
+  serInterface.sendCommand(GET_IP, &byteIP, sizeof(byteIP));
 }
 
 void SetupMessageHandlers()
