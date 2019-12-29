@@ -625,7 +625,7 @@ void MonitorNetworkStatus()
       WiFi.mode(WIFI_OFF);
     }
 
-    LOG << "Connection status changed to " << networkState << " from " << oldNetworkState;
+    LOG << "Connection status changed from " << oldNetworkState << " to " << networkState;
     serInterface.sendCommand(NETWORK_STATE_CHANGE, &networkState, sizeof(networkState));
     oldNetworkState = networkState;
   }
@@ -667,7 +667,7 @@ void MonitorServerConnection()
       }
     }
 
-    LOG << "Server connection status changed to " << serverState << " from " << oldServerState;
+    LOG << "Server connection status changed from " << oldServerState << " to " << serverState;
     serInterface.sendCommand(MQTT_STATE_CHANGE, &serverState, sizeof(serverState));
     oldServerState = serverState;
   }
