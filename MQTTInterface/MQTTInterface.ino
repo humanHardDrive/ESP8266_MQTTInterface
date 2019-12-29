@@ -613,6 +613,7 @@ void MonitorNetworkStatus()
         bConnectedToInternet = false;
         LOG << "Couldn't get time from server";
       }
+      nLastTimeRequest = millis();
     }
   }
 
