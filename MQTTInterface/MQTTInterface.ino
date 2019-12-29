@@ -154,9 +154,9 @@ bool RecoverInfo()
     LOG << "MQTT info " << SavedInfoMirror.sServerAddr << " " << SavedInfoMirror.sUserName << " " << SavedInfoMirror.sUserPass;
 
     LOG << "Subscription list: ";
-    for(unsigned int i = 0; i < MAX_SUBS; i++)
+    for (unsigned int i = 0; i < MAX_SUBS; i++)
     {
-      if(SavedInfoMirror.sSubList[i][0])
+      if (SavedInfoMirror.sSubList[i][0])
         LOG << SavedInfoMirror.sSubList[i];
     }
 
@@ -596,7 +596,7 @@ void MonitorNetworkStatus()
       LOG << "Incorrect password";
       networkState = DISCONNECTED;
     }
-    else if ((millis() - nConnectionAttemptStart) > 5000)
+    else if ((millis() - nConnectionAttemptStart) > 10000)
     {
       LOG << "Connection timeout";
       networkState = DISCONNECTED;
@@ -642,6 +642,16 @@ void UpdateNetworkInfo(String sNetworkName, String sNetworkPass)
   serInterface.sendCommand(NETWORK_CHANGE, SavedInfo.sNetworkName, sNetworkName.length());
 }
 
+void UpdateServerInfo(String sServerAddr, uint16_t nServerPort, String sUserName, String sUserPass)
+{
+  strcpy(SavedInfo.sServerAddr, sServerAddr.c_str());
+  SavedInfo.nServerPort = nServerPort;
+  strcpy(SavedInfo.sUserName, sUserName.c_str());
+  strcpy(SavedInfo.sUserPass, sUserPass.c_str());
+  
+  LOG << "Server Change " << sServerAddr << ":" << nServerPort << " " << sUserName << " " << sUserPass;
+}
+
 void MonitorServerConnection()
 {
   if (serverState == CONNECTING_TO_AP)
@@ -660,11 +670,11 @@ void MonitorServerConnection()
     if (serverState == DISCONNECTED)
       mqttClient.disconnect();
 
-    if(serverState == CONNECTED_TO_AP)
+    if (serverState == CONNECTED_TO_AP)
     {
-      for(unsigned int i = 0; i < MAX_SUBS; i++)
+      for (unsigned int i = 0; i < MAX_SUBS; i++)
       {
-        if(SavedInfo.sSubList[i][0])
+        if (SavedInfo.sSubList[i][0])
           mqttClient.subscribe(SavedInfo.sSubList[i]);
       }
     }
@@ -703,6 +713,12 @@ void setup()
     [](String ssid, String password)
   {
     UpdateNetworkInfo(ssid, password);
+  });
+
+  helper.onServerChange(
+    [](String addr, uint16_t port, String user, String pass)
+  {
+    UpdateServerInfo(addr, port, user, pass);
   });
 
   digitalWrite(STATUS_PIN, LOW);
