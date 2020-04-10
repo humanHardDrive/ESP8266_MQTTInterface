@@ -620,6 +620,10 @@ void MonitorNetworkStatus()
   /*Only on change*/
   if (networkState != oldNetworkState)
   {
+    LOG << "Connection status changed from " << oldNetworkState << " to " << networkState;
+    serInterface.sendCommand(NETWORK_STATE_CHANGE, &networkState, sizeof(networkState));
+    oldNetworkState = networkState;
+
     if (networkState == DISCONNECTED)
     {
       /*Diconnect the server without a WiFi connection*/
@@ -628,9 +632,10 @@ void MonitorNetworkStatus()
       WiFi.mode(WIFI_OFF);
     }
 
-    LOG << "Connection status changed from " << oldNetworkState << " to " << networkState;
-    serInterface.sendCommand(NETWORK_STATE_CHANGE, &networkState, sizeof(networkState));
-    oldNetworkState = networkState;
+    if (networkState == CONNECTED_TO_AP)
+    {
+      LOG << "IP Address " << WiFi.localIP();
+    }
   }
 }
 
