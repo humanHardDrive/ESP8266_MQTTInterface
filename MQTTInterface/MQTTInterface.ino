@@ -210,6 +210,20 @@ void reboot()
   while (1);
 }
 
+void strcpy_s(char* dst, char* src, size_t count)
+{
+  while (*src && count)
+  {
+    *dst = *src;
+
+    src++;
+    dst++;
+    count--;
+  }
+
+  *dst = '\0';
+}
+
 /*NETWORK SETUP*/
 /*Changing the WiFi mode actually takes some amount of time
    This method changes the WiFi mode and waits for it to complete, with a timeout
@@ -539,6 +553,30 @@ void HandleGetIP(uint8_t* buf)
   serInterface.sendCommand(GET_IP, &byteIP, sizeof(byteIP));
 }
 
+void HandleSetSubAlias(uint8_t* buf)
+{
+  LOG << "HandleSetSubAlias";
+
+  uint8_t nIndex = buf[0];
+  if (nIndex < MAX_SUBS)
+  {
+    memset(SavedInfo.sSubList[nIndex], 0, MAX_SUB_PATH_LENGTH);
+    strcpy_s(SavedInfo.sSubList[nIndex], (char*)&buf[1], MAX_SUB_PATH_LENGTH - 1);
+  }
+}
+
+void HandleSetPubAlias(uint8_t* buf)
+{
+  LOG << "HandleSetPubAlias";
+
+  uint8_t nIndex = buf[0];
+  if (nIndex < MAX_PUBS)
+  {
+    memset(SavedInfo.sPubList[nIndex], 0, MAX_PUB_PATH_LENGTH);
+    strcpy_s(SavedInfo.sPubList[nIndex], (char*)&buf[1], MAX_PUB_PATH_LENGTH - 1);
+  }
+}
+
 void SetupMessageHandlers()
 {
   serInterface.setCommandHandler(SET_NETWORK_NAME, HandleSetNetworkName);
@@ -582,6 +620,9 @@ void SetupMessageHandlers()
   serInterface.setCommandHandler(SET_TIME_OFFSET, HandleSetTimeOffset);
 
   serInterface.setCommandHandler(GET_IP, HandleGetIP);
+
+  serInterface.setCommandHandler(SET_SUB_ALIAS, HandleSetSubAlias);
+  serInterface.setCommandHandler(SET_PUB_ALIAS, HandleSetPubAlias);
 }
 
 void MonitorNetworkStatus()
@@ -730,14 +771,14 @@ void setup()
   RecoverInfo();
 
   memset(sPubAlias, 0, sizeof(sPubAlias));
-  for(size_t i = 0; i < MAX_PUBS; i++)
+  for (size_t i = 0; i < MAX_PUBS; i++)
   {
     pPubListWrapper[i] = SavedInfo.sPubList[i];
     pPubAliasWrapper[i] = sPubAlias[i];
   }
 
   memset(sSubAlias, 0, sizeof(sSubAlias));
-  for(size_t i = 0; i < MAX_SUBS; i++)
+  for (size_t i = 0; i < MAX_SUBS; i++)
   {
     pSubListWrapper[i] = SavedInfo.sSubList[i];
     pSubAliasWrapper[i] = sSubAlias[i];
@@ -750,7 +791,7 @@ void setup()
   helper.setSubList(pSubListWrapper);
   helper.setSubAliasList(pSubAliasWrapper);
   helper.setSubCount(MAX_SUBS);
-  
+
   helper.setPubList(pPubListWrapper);
   helper.setPubAliasList(pPubAliasWrapper);
   helper.setPubCount(MAX_PUBS);
