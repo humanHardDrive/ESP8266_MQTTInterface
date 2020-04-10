@@ -26,8 +26,10 @@
 
 #define MAX_NETWORK_NAME_LENGTH   32
 #define MAX_DEVICE_NAME_LENGTH    16
-#define MAX_SUB_PATH_LENGTH       64
-#define MAX_SUBS                  16
+#define MAX_SUB_PATH_LENGTH       32
+#define MAX_PUB_PATH_LENGTH       32
+#define MAX_SUBS                  8
+#define MAX_PUBS                  8
 
 #define STATUS_PIN  4
 #define DBG_TX_PIN  12
@@ -49,6 +51,8 @@ struct SAVE_INFO
 
   /*MQTT Subscription List*/
   char sSubList[MAX_SUBS][MAX_SUB_PATH_LENGTH];
+  /*MQTT Publication List*/
+  char sPubList[MAX_PUBS][MAX_PUB_PATH_LENGTH];
 
   uint32_t checksum;
 };
@@ -62,6 +66,18 @@ Stream& logger(Serial);
 #else
 Stream& logger(dbg);
 #endif
+
+/*Create a pointer list for the sub list*/
+char* pSubListWrapper[MAX_SUBS];
+/*Create memory block for the sub alias*/
+char sSubAlias[MAX_SUBS][MAX_SUB_PATH_LENGTH];
+/*Create a pointer list for the sub alias list*/
+char* pSubAliasWrapper[MAX_SUBS];
+
+/*Do the same thing for publications*/
+char* pPubListWrapper[MAX_PUBS];
+char sPubAlias[MAX_PUBS][MAX_PUB_PATH_LENGTH];
+char* pPubAliasWrapper[MAX_PUBS];
 
 NetworkHelper helper;
 uint32_t nConnectionAttemptStart = 0;
@@ -712,6 +728,20 @@ void setup()
 
   buildDeviceName(sDeviceName);
   RecoverInfo();
+
+  memset(sPubAlias, 0, sizeof(sPubAlias));
+  for(size_t i = 0; i < MAX_PUBS; i++)
+  {
+    pPubListWrapper[i] = SavedInfo.sPubList[i];
+    pPubAliasWrapper[i] = sPubAlias[i];
+  }
+
+  memset(sSubAlias, 0, sizeof(sSubAlias));
+  for(size_t i = 0; i < MAX_SUBS; i++)
+  {
+    pSubListWrapper[i] = SavedInfo.sSubList[i];
+    pSubAliasWrapper[i] = sSubAlias[i];
+  }
 
   SetupMessageHandlers();
 
