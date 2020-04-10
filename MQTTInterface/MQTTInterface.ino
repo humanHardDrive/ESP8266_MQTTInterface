@@ -747,6 +747,14 @@ void setup()
 
   timeClient.begin();
 
+  helper.setSubList(pSubListWrapper);
+  helper.setSubAliasList(pSubAliasWrapper);
+  helper.setSubCount(MAX_SUBS);
+  
+  helper.setPubList(pPubListWrapper);
+  helper.setPubAliasList(pPubAliasWrapper);
+  helper.setPubCount(MAX_PUBS);
+
   helper.onNetworkChange(
     [](String ssid, String password)
   {
