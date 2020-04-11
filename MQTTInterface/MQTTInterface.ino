@@ -562,7 +562,11 @@ void HandleSetSubAlias(uint8_t* buf)
   {
     memset(SavedInfo.sSubList[nIndex], 0, MAX_SUB_PATH_LENGTH);
     strcpy_s(SavedInfo.sSubList[nIndex], (char*)&buf[1], MAX_SUB_PATH_LENGTH - 1);
+
+    LOG << nIndex << " " << SavedInfo.sSubList[nIndex];
   }
+  else
+    LOG << "Invalid index " << nIndex;
 }
 
 void HandleSetPubAlias(uint8_t* buf)
@@ -574,7 +578,11 @@ void HandleSetPubAlias(uint8_t* buf)
   {
     memset(SavedInfo.sPubList[nIndex], 0, MAX_PUB_PATH_LENGTH);
     strcpy_s(SavedInfo.sPubList[nIndex], (char*)&buf[1], MAX_PUB_PATH_LENGTH - 1);
+
+    LOG << nIndex << " " << SavedInfo.sPubList[nIndex];
   }
+  else
+    LOG << "Invalid index " << nIndex;
 }
 
 void HandleClearPubList(uint8_t* buf)
