@@ -645,7 +645,9 @@ void SetupMessageHandlers()
 
   serInterface.setCommandHandler(GET_IP, HandleGetIP);
 
+  serInterface.setCommandHandler(CLEAR_SUB_LIST, HandleClearSubList);
   serInterface.setCommandHandler(SET_SUB_ALIAS, HandleSetSubAlias);
+  serInterface.setCommandHandler(CLEAR_PUB_LIST, HandleClearPubList);
   serInterface.setCommandHandler(SET_PUB_ALIAS, HandleSetPubAlias);
 }
 
