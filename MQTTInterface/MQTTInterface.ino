@@ -427,7 +427,10 @@ void HandleStopAP(uint8_t* buf)
 void HandleStartNetworkHelper(uint8_t* buf)
 {
   LOG << "HandleStartNetworkHelper";
-  helper.start();
+  if (networkState == DISCONNECTED ||
+      networkState == CONNECTED_TO_AP ||
+      networkState == ACTING_AS_AP)
+    helper.start();
 }
 
 void HandleStopNetworkHelper(uint8_t* buf)
