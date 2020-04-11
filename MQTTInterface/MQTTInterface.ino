@@ -577,6 +577,22 @@ void HandleSetPubAlias(uint8_t* buf)
   }
 }
 
+void HandleClearPubList(uint8_t* buf)
+{
+  LOG << "HandleClearPubList";
+
+  memset(SavedInfo.sPubList, 0, sizeof(SavedInfo.sPubList));
+  memset(sPubAlias, 0, sizeof(sPubAlias));
+}
+
+void HandleClearSubList(uint8_t* buf)
+{
+  LOG << "HandleClearSubList";
+
+  memset(SavedInfo.sSubList, 0, sizeof(SavedInfo.sSubList));
+  memset(sSubAlias, 0, sizeof(sSubAlias));
+}
+
 void SetupMessageHandlers()
 {
   serInterface.setCommandHandler(SET_NETWORK_NAME, HandleSetNetworkName);
