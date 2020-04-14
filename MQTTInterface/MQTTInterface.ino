@@ -769,7 +769,12 @@ void MonitorServerConnection()
       for (unsigned int i = 0; i < MAX_SUBS; i++)
       {
         if (SavedInfo.sSubList[i][0])
-          mqttClient.subscribe(SavedInfo.sSubList[i]);
+        {
+          if (mqttClient.subscribe(SavedInfo.sSubList[i]))
+            LOG << "Subscribed to " << SavedInfo.sSubList[i];
+          else
+            LOG << "Failed to subscribe to " << SavedInfo.sSubList[i];
+        }
       }
     }
 
@@ -777,6 +782,29 @@ void MonitorServerConnection()
     serInterface.sendCommand(MQTT_STATE_CHANGE, &serverState, sizeof(serverState));
     oldServerState = serverState;
   }
+}
+
+void UpdateSubscription(uint8_t nIndex, String sPub)
+{
+  if (nIndex < MAX_SUBS)
+  {
+    LOG << "Subscription " << nIndex << " changed from " <<
+        SavedInfo.sSubList[nIndex] << " to " << sPub;
+
+    if (mqttClient.unsubscribe(SavedInfo.sSubList[nIndex]))
+      LOG << "Unsubscribed";
+    else
+      LOG << "Failed to unsubscribe";
+
+    strcpy_s(SavedInfo.sSubList[nIndex], (char*)sPub.c_str(), MAX_SUB_PATH_LENGTH);
+
+    if (mqttClient.subscribe(SavedInfo.sSubList[nIndex]))
+      LOG << "Subscribed";
+    else
+      LOG << "Failed to subscribe";
+  }
+  else
+    LOG << "Invalid subscription change " << nIndex;
 }
 
 void setup()
@@ -835,6 +863,12 @@ void setup()
     [](String addr, uint16_t port, String user, String pass)
   {
     UpdateServerInfo(addr, port, user, pass);
+  });
+
+  helper.onSubChange(
+    [](uint8_t index, String sub)
+  {
+    UpdateSubscription(index, sub);
   });
 
   digitalWrite(STATUS_PIN, LOW);
