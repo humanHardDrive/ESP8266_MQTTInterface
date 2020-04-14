@@ -604,6 +604,14 @@ void HandleClearSubList(uint8_t* buf)
   memset(sSubAlias, 0, sizeof(sSubAlias));
 }
 
+void HandlePubInfo(uint8_t* buf)
+{
+  if (serverState == CONNECTED_TO_AP)
+  {
+
+  }
+}
+
 void SetupMessageHandlers()
 {
   serInterface.setCommandHandler(SET_NETWORK_NAME, HandleSetNetworkName);
@@ -652,6 +660,8 @@ void SetupMessageHandlers()
   serInterface.setCommandHandler(SET_SUB_ALIAS, HandleSetSubAlias);
   serInterface.setCommandHandler(CLEAR_PUB_LIST, HandleClearPubList);
   serInterface.setCommandHandler(SET_PUB_ALIAS, HandleSetPubAlias);
+
+  serInterface.setCommandHandler(PUB_INFO, HandlePubInfo);
 }
 
 void MonitorNetworkStatus()
