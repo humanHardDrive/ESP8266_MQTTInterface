@@ -17,48 +17,25 @@
 */
 #define LOG logger << "\n\r" << millis() << '\t'
 
-#define _REIFB    //Recovery Error Is First Boot
+#define MAX_DEVICE_NAME_LENGTH    16
+#define MAX_DEVICE_NAME_LENGTH    16
+#define MAX_PATH_LENGTH           32
+#define MAX_SUBS                  8
+#define MAX_PUBS                  8
+
+#define MEM_DEVICE_SIZE           1024
+
 /*Send log statements out of the programming port*/
 //#define PROG_DBG
 
 /*Root of the device name. The chip ID will be appended to this*/
 #define DEVICE_NAME_BASE          "mqttDev-"
 
-#define MAX_NETWORK_NAME_LENGTH   32
-#define MAX_DEVICE_NAME_LENGTH    16
-#define MAX_SUB_PATH_LENGTH       32
-#define MAX_PUB_PATH_LENGTH       32
-#define MAX_SUBS                  8
-#define MAX_PUBS                  8
-
 #define STATUS_PIN  4
 #define DBG_TX_PIN  12
 #define DBG_RX_PIN  14
 
-#define TIME_UPDATE_PERIOD  60000
-
-struct SAVE_INFO
-{
-  /*Access Point Info*/
-  char sNetworkName[MAX_NETWORK_NAME_LENGTH];
-  char sNetworkPass[MAX_NETWORK_NAME_LENGTH];
-
-  /*MQTT Server Info*/
-  char sServerAddr[MAX_NETWORK_NAME_LENGTH];
-  uint16_t nServerPort;
-  char sUserName[MAX_NETWORK_NAME_LENGTH];
-  char sUserPass[MAX_NETWORK_NAME_LENGTH];
-
-  /*MQTT Subscription List*/
-  char sSubList[MAX_SUBS][MAX_SUB_PATH_LENGTH];
-  /*MQTT Publication List*/
-  char sPubList[MAX_PUBS][MAX_PUB_PATH_LENGTH];
-
-  uint32_t checksum;
-};
-
 /*GLOBALS*/
-SAVE_INFO SavedInfo, SavedInfoMirror;
 SerialInterface serInterface;
 SoftwareSerial dbg(DBG_RX_PIN, DBG_TX_PIN, false);
 #ifdef PROG_DBG
@@ -67,16 +44,31 @@ Stream& logger(Serial);
 Stream& logger(dbg);
 #endif
 
+/*Memory Buffer*/
+uint8_t memBuffer[MEM_DEVICE_SIZE];
+
+/*Access Point Info*/
+char sNetworkName[MAX_NETWORK_NAME_LENGTH];
+char sNetworkPass[MAX_NETWORK_NAME_LENGTH];
+
+/*MQTT Server Info*/
+char sServerAddr[MAX_NETWORK_NAME_LENGTH];
+uint16_t nServerPort;
+char sUserName[MAX_NETWORK_NAME_LENGTH];
+char sUserPass[MAX_NETWORK_NAME_LENGTH];
+
+char sSubList[MAX_SUBS][MAX_PATH_LENGTH];
 /*Create a pointer list for the sub list*/
 char* pSubListWrapper[MAX_SUBS];
 /*Create memory block for the sub alias*/
-char sSubAlias[MAX_SUBS][MAX_SUB_PATH_LENGTH];
+char sSubAlias[MAX_SUBS][MAX_PATH_LENGTH];
 /*Create a pointer list for the sub alias list*/
 char* pSubAliasWrapper[MAX_SUBS];
 
 /*Do the same thing for publications*/
+char sPubList[MAX_SUBS][MAX_PATH_LENGTH];
 char* pPubListWrapper[MAX_PUBS];
-char sPubAlias[MAX_PUBS][MAX_PUB_PATH_LENGTH];
+char sPubAlias[MAX_PUBS][MAX_PATH_LENGTH];
 char* pPubAliasWrapper[MAX_PUBS];
 
 NetworkHelper helper;
@@ -121,81 +113,6 @@ void buildDeviceName(char* sName)
   }
 
   strcat(sName, sID);
-}
-
-uint32_t calcSavedInfoChecksum(SAVE_INFO* info)
-{
-  uint32_t checksum = 0;
-
-  for (uint16_t i = 0; i < (sizeof(SAVE_INFO) - sizeof(checksum)); i++)
-    checksum += ((uint8_t*)info)[i];
-
-  return checksum;
-}
-
-bool isSavedInfoValid(SAVE_INFO* info)
-{
-  return (info->checksum == calcSavedInfoChecksum(info));
-}
-
-void firstBootSetup(SAVE_INFO* info)
-{
-  /*Default all connection info*/
-  memset(info, 0, sizeof(SAVE_INFO));
-}
-
-void SaveInfo()
-{
-  if (memcmp(&SavedInfo, &SavedInfoMirror, sizeof(SAVE_INFO)))
-    //EEPROM and local copy are different, better save
-  {
-    SavedInfo.checksum = calcSavedInfoChecksum(&SavedInfo);
-    LOG << "Saving";
-    EEPROM.put(0, SavedInfo);
-    EEPROM.commit();
-    //Write back the changes to the local copy
-    memcpy(&SavedInfoMirror, &SavedInfo, sizeof(SAVE_INFO));
-  }
-}
-
-bool RecoverInfo()
-{
-  EEPROM.get(0, SavedInfoMirror);
-
-  if (isSavedInfoValid(&SavedInfoMirror))
-  {
-    LOG << "Saved info is valid";
-    LOG << "Device name " << sDeviceName;
-    LOG << "Network info " << SavedInfoMirror.sNetworkName << " " << SavedInfoMirror.sNetworkPass;
-    LOG << "MQTT info " << SavedInfoMirror.sServerAddr << ":" << SavedInfoMirror.nServerPort << " " << SavedInfoMirror.sUserName << " " << SavedInfoMirror.sUserPass;
-
-    LOG << "Subscription list: ";
-    for (unsigned int i = 0; i < MAX_SUBS; i++)
-    {
-      if (SavedInfoMirror.sSubList[i][0])
-        LOG << SavedInfoMirror.sSubList[i];
-    }
-
-    memcpy(&SavedInfo, &SavedInfoMirror, sizeof(SAVE_INFO));
-
-    return true;
-  }
-  else
-  {
-    LOG << "Saved info is not valid";
-
-#ifdef _REIFB
-    firstBootSetup(&SavedInfo);
-    SaveInfo();
-
-    LOG << "Treating as first boot";
-    LOG << "Device name " << sDeviceName;
-
-    return true;
-#endif
-  }
-
-  return false;
 }
 
 void reboot()
@@ -281,15 +198,15 @@ void ConnectToAP()
 {
   if (networkState != CONNECTED_TO_AP)
   {
-    if (SavedInfo.sNetworkName[0])
+    if (sNetworkName[0])
     {
       GenericDisconnect();
       if (WaitForModeChange(WIFI_STA, 100))
       {
-        if (SavedInfo.sNetworkPass[0])
-          WiFi.begin(SavedInfo.sNetworkName, SavedInfo.sNetworkPass);
+        if (sNetworkPass[0])
+          WiFi.begin(sNetworkName, sNetworkPass);
         else
-          WiFi.begin(SavedInfo.sNetworkName);
+          WiFi.begin(sNetworkName);
 
         networkState = CONNECTING_TO_AP;
         nConnectionAttemptStart = millis();
@@ -342,12 +259,12 @@ void ConnectToServer()
 {
   if ((networkState == CONNECTED_TO_AP) && serverState == DISCONNECTED)
   {
-    if (SavedInfo.sServerAddr[0] && SavedInfo.nServerPort)
+    if (sServerAddr[0] && nServerPort)
     {
-      mqttClient.setServer(SavedInfo.sServerAddr, SavedInfo.nServerPort);
+      mqttClient.setServer(sServerAddr, nServerPort);
 
-      if (SavedInfo.sUserName[0])
-        mqttClient.connect(sDeviceName, SavedInfo.sUserName, SavedInfo.sUserPass);
+      if (sUserName[0])
+        mqttClient.connect(sDeviceName, sUserName, sUserPass);
       else
         mqttClient.connect(sDeviceName);
 
@@ -369,31 +286,6 @@ void ConnectToServer()
 }
 
 /*MESSAGE HANDLERS*/
-void HandleSetNetworkName(uint8_t* buf)
-{
-  strcpy(SavedInfo.sNetworkName, (char*)buf);
-  LOG << "HandleSetNetworkName" << " " << SavedInfo.sNetworkName;
-}
-
-void HandleSetNetworkPass(uint8_t* buf)
-{
-  strcpy(SavedInfo.sNetworkPass, (char*)buf);
-  LOG << "HandleSetNetworkPass" << " " << SavedInfo.sNetworkPass;
-}
-
-/*These should return the current network name, saved in flash or not*/
-void HandleGetNetworkName(uint8_t* buf)
-{
-  LOG << "HandleGetNetworkName";
-  serInterface.sendCommand(GET_NETWORK_NAME, SavedInfo.sNetworkName, strlen(SavedInfo.sNetworkName));
-}
-
-void HandleGetNetworkPass(uint8_t* buf)
-{
-  LOG << "HandleGetNetworkPass";
-  serInterface.sendCommand(GET_NETWORK_PASS, SavedInfo.sNetworkPass, strlen(SavedInfo.sNetworkPass));
-}
-
 void HandleGetDeviceName(uint8_t* buf)
 {
   LOG << "HandleGetDeviceName";
@@ -439,12 +331,6 @@ void HandleStopNetworkHelper(uint8_t* buf)
   helper.stop();
 }
 
-void HandleSave(uint8_t* buf)
-{
-  LOG << "HandleSave";
-  SaveInfo();
-}
-
 void HandleGetConnectionState(uint8_t* buf)
 {
   LOG << "HandleGetConnectionState";
@@ -455,54 +341,6 @@ void HandleReboot(uint8_t* buf)
 {
   LOG << "HandleReboot";
   reboot();
-}
-
-void HandleSetServerAddr(uint8_t* buf)
-{
-  strcpy(SavedInfo.sServerAddr, (char*)buf);
-  LOG << "HandleSetServerName" << " " << SavedInfo.sServerAddr;
-}
-
-void HandleSetServerPort(uint8_t* buf)
-{
-  memcpy(&SavedInfo.nServerPort, buf, sizeof(SavedInfo.nServerPort));
-  LOG << "HandleSetServerPort" << " " << SavedInfo.nServerPort;
-}
-
-void HandleSetUserName(uint8_t* buf)
-{
-  strcpy(SavedInfo.sUserName, (char*)buf);
-  LOG << "HandleSetUserName" << " " << SavedInfo.sUserName;
-}
-
-void HandleSetUserPass(uint8_t* buf)
-{
-  strcpy(SavedInfo.sUserPass, (char*)buf);
-  LOG << "HandleSetUserPass" << " " << SavedInfo.sUserPass;
-}
-
-void HandleGetServerAddr(uint8_t* buf)
-{
-  LOG << "HandleGetServerName";
-  serInterface.sendCommand(GET_SERVER_ADDR, SavedInfo.sServerAddr, strlen(SavedInfo.sServerAddr));
-}
-
-void HandleGetServerPort(uint8_t* buf)
-{
-  LOG << "HandleGetServerPort";
-  serInterface.sendCommand(GET_SERVER_PORT, &SavedInfo.nServerPort, sizeof(SavedInfo.nServerPort));
-}
-
-void HandleGetUserName(uint8_t* buf)
-{
-  LOG << "HandleGetUserName";
-  serInterface.sendCommand(GET_USER_NAME, SavedInfo.sUserName, strlen(SavedInfo.sUserName));
-}
-
-void HandleGetUserPass(uint8_t* buf)
-{
-  LOG << "HandleGetUserPass";
-  serInterface.sendCommand(GET_USER_PASS, SavedInfo.sUserPass, strlen(SavedInfo.sUserPass));
 }
 
 void HandleConnectToServer(uint8_t* buf)
@@ -563,10 +401,10 @@ void HandleSetSubAlias(uint8_t* buf)
   uint8_t nIndex = buf[0];
   if (nIndex < MAX_SUBS)
   {
-    memset(SavedInfo.sSubList[nIndex], 0, MAX_SUB_PATH_LENGTH);
-    strcpy_s(SavedInfo.sSubList[nIndex], (char*)&buf[1], MAX_SUB_PATH_LENGTH - 1);
+    memset(sSubList[nIndex], 0, MAX_PATH_LENGTH);
+    strcpy_s(sSubList[nIndex], (char*)&buf[1], MAX_PATH_LENGTH - 1);
 
-    LOG << nIndex << " " << SavedInfo.sSubList[nIndex];
+    LOG << nIndex << " " << sSubList[nIndex];
   }
   else
     LOG << "Invalid index " << nIndex;
@@ -579,10 +417,10 @@ void HandleSetPubAlias(uint8_t* buf)
   uint8_t nIndex = buf[0];
   if (nIndex < MAX_PUBS)
   {
-    memset(SavedInfo.sPubList[nIndex], 0, MAX_PUB_PATH_LENGTH);
-    strcpy_s(SavedInfo.sPubList[nIndex], (char*)&buf[1], MAX_PUB_PATH_LENGTH - 1);
+    memset(sPubList[nIndex], 0, MAX_PATH_LENGTH);
+    strcpy_s(sPubList[nIndex], (char*)&buf[1], MAX_PATH_LENGTH - 1);
 
-    LOG << nIndex << " " << SavedInfo.sPubList[nIndex];
+    LOG << nIndex << " " << sPubList[nIndex];
   }
   else
     LOG << "Invalid index " << nIndex;
@@ -592,7 +430,7 @@ void HandleClearPubList(uint8_t* buf)
 {
   LOG << "HandleClearPubList";
 
-  memset(SavedInfo.sPubList, 0, sizeof(SavedInfo.sPubList));
+  memset(sPubList, 0, sizeof(sPubList));
   memset(sPubAlias, 0, sizeof(sPubAlias));
 }
 
@@ -600,7 +438,7 @@ void HandleClearSubList(uint8_t* buf)
 {
   LOG << "HandleClearSubList";
 
-  memset(SavedInfo.sSubList, 0, sizeof(SavedInfo.sSubList));
+  memset(sSubList, 0, sizeof(sSubList));
   memset(sSubAlias, 0, sizeof(sSubAlias));
 }
 
@@ -737,21 +575,12 @@ void MonitorNetworkStatus()
 
 void UpdateNetworkInfo(String sNetworkName, String sNetworkPass)
 {
-  strcpy(SavedInfo.sNetworkName, sNetworkName.c_str());
-  strcpy(SavedInfo.sNetworkPass, sNetworkPass.c_str());
-
-  LOG << "Network Change " << sNetworkName << " " << sNetworkPass;
-  serInterface.sendCommand(NETWORK_CHANGE, SavedInfo.sNetworkName, sNetworkName.length());
+  /*Send notification that the network info has been updated*/
 }
 
 void UpdateServerInfo(String sServerAddr, uint16_t nServerPort, String sUserName, String sUserPass)
 {
-  strcpy(SavedInfo.sServerAddr, sServerAddr.c_str());
-  SavedInfo.nServerPort = nServerPort;
-  strcpy(SavedInfo.sUserName, sUserName.c_str());
-  strcpy(SavedInfo.sUserPass, sUserPass.c_str());
-
-  LOG << "Server Change " << sServerAddr << ":" << nServerPort << " " << sUserName << " " << sUserPass;
+  /*Send notification that the server info has been updated*/
 }
 
 void MonitorServerConnection()
@@ -778,12 +607,12 @@ void MonitorServerConnection()
     {
       for (unsigned int i = 0; i < MAX_SUBS; i++)
       {
-        if (SavedInfo.sSubList[i][0])
+        if (sSubList[i][0])
         {
-          if (mqttClient.subscribe(SavedInfo.sSubList[i]))
-            LOG << "Subscribed to " << SavedInfo.sSubList[i];
+          if (mqttClient.subscribe(sSubList[i]))
+            LOG << "Subscribed to " << sSubList[i];
           else
-            LOG << "Failed to subscribe to " << SavedInfo.sSubList[i];
+            LOG << "Failed to subscribe to " << sSubList[i];
         }
       }
     }
@@ -799,16 +628,16 @@ void UpdateSubscription(uint8_t nIndex, String sPub)
   if (nIndex < MAX_SUBS)
   {
     LOG << "Subscription " << nIndex << " changed from " <<
-        SavedInfo.sSubList[nIndex] << " to " << sPub;
+        sSubList[nIndex] << " to " << sPub;
 
-    if (mqttClient.unsubscribe(SavedInfo.sSubList[nIndex]))
+    if (mqttClient.unsubscribe(sSubList[nIndex]))
       LOG << "Unsubscribed";
     else
       LOG << "Failed to unsubscribe";
 
-    strcpy_s(SavedInfo.sSubList[nIndex], (char*)sPub.c_str(), MAX_SUB_PATH_LENGTH);
+    strcpy_s(sSubList[nIndex], (char*)sPub.c_str(), MAX_PATH_LENGTH);
 
-    if (mqttClient.subscribe(SavedInfo.sSubList[nIndex]))
+    if (mqttClient.subscribe(sSubList[nIndex]))
       LOG << "Subscribed";
     else
       LOG << "Failed to subscribe";
@@ -835,21 +664,6 @@ void setup()
   dbg.begin(57600);
 
   buildDeviceName(sDeviceName);
-  RecoverInfo();
-
-  memset(sPubAlias, 0, sizeof(sPubAlias));
-  for (size_t i = 0; i < MAX_PUBS; i++)
-  {
-    pPubListWrapper[i] = SavedInfo.sPubList[i];
-    pPubAliasWrapper[i] = sPubAlias[i];
-  }
-
-  memset(sSubAlias, 0, sizeof(sSubAlias));
-  for (size_t i = 0; i < MAX_SUBS; i++)
-  {
-    pSubListWrapper[i] = SavedInfo.sSubList[i];
-    pSubAliasWrapper[i] = sSubAlias[i];
-  }
 
   SetupMessageHandlers();
 

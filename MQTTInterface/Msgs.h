@@ -62,4 +62,20 @@ enum NETWORK_STATE_CHANGE_TYPE
   UNKNOWN_STATE
 };
 
+#define MAX_NETWORK_NAME_LENGTH   32
+
+struct ConnectToAPMsg
+{
+  char SSID[MAX_NETWORK_NAME_LENGTH];
+  char password[MAX_NETWORK_NAME_LENGTH];
+};
+
+#define MAX_ALIAS_NAME_LENGTH 16
+
+struct SetAliasMsg
+{
+  uint8_t nIndex;
+  char sAlias[MAX_ALIAS_NAME_LENGTH];
+};
+
 #endif
