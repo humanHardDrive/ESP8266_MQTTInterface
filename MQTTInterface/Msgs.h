@@ -21,6 +21,8 @@ enum CMD_TYPE
   SAVE,
   REBOOT,
   GET_DEVICE_NAME,
+  SET_AP_INFO,
+  GET_AP_INFO,
   CONNECT_TO_AP,
   DISCONNECT_FROM_AP,
   GET_IP,
@@ -28,19 +30,19 @@ enum CMD_TYPE
   STOP_AP,
   START_NETWORK_HELPER,
   STOP_NETWORK_HELPER,
-  ADD_SUBSCRIPTION,
-  REMOVE_SUBSCRIPTION,
-  GET_CONNECTION_STATE,
+  SET_SERVER_INFO,
+  GET_SERVER_INFO,
   CONNECT_TO_SERVER,
   DISCONNECT_FROM_SERVER,
+  SET_PUB_ALIAS,
+  SET_SUB_ALIAS,
+  ADD_SUBSCRIPTION,
+  REMOVE_SUBSCRIPTION,
+  GET_CONNECTION_INFO,
+  PUBLISH_INFO,
   VERSION,
   TIME,
   SET_TIME_OFFSET,
-  SET_PUB_ALIAS,
-  SET_SUB_ALIAS,
-  CLEAR_PUB_LIST,
-  CLEAR_SUB_LIST,
-  PUB_INFO,
   INVALID_CMD,
 
   /*NOTIFY*/
@@ -63,19 +65,40 @@ enum NETWORK_STATE_CHANGE_TYPE
 };
 
 #define MAX_NETWORK_NAME_LENGTH   32
+#define MAX_NETWORK_PASS_LENGTH   16
 
-struct ConnectToAPMsg
+struct NetworkInfo
 {
-  char SSID[MAX_NETWORK_NAME_LENGTH];
-  char password[MAX_NETWORK_NAME_LENGTH];
+  char sSSID[MAX_NETWORK_NAME_LENGTH];
+  char password[MAX_NETWORK_PASS_LENGTH];
+};
+
+struct IPInfo
+{
+  uint8_t IP[4];
+};
+
+struct ServerInfo
+{
+  char sServerAddr[MAX_NETWORK_NAME_LENGTH];
+  uint16_t nServerPort;
+
+  char sUserName[MAX_NETWORK_NAME_LENGTH];
+  char sUserPass[MAX_NETWORK_PASS_LENGTH];
 };
 
 #define MAX_ALIAS_NAME_LENGTH 16
 
-struct SetAliasMsg
+struct AliasInfo
 {
   uint8_t nIndex;
   char sAlias[MAX_ALIAS_NAME_LENGTH];
+};
+
+struct ConnectionInfo
+{
+  uint8_t nAPConnectionInfo;
+  uint8_t nServerConnectionInfo;
 };
 
 #endif

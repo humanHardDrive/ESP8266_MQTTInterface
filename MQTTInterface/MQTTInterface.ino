@@ -18,7 +18,6 @@
 #define LOG logger << "\n\r" << millis() << '\t'
 
 #define MAX_DEVICE_NAME_LENGTH    16
-#define MAX_DEVICE_NAME_LENGTH    16
 #define MAX_PATH_LENGTH           32
 #define MAX_SUBS                  8
 #define MAX_PUBS                  8
@@ -470,7 +469,7 @@ void SetupMessageHandlers()
 
   serInterface.setCommandHandler(SAVE, HandleSave);
 
-  serInterface.setCommandHandler(GET_CONNECTION_STATE, HandleGetConnectionState);
+  serInterface.setCommandHandler(GET_CONNECTION_INFO, HandleGetConnectionState);
 
   serInterface.setCommandHandler(REBOOT, HandleReboot);
 
