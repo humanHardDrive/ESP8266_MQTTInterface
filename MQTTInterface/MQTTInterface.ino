@@ -348,7 +348,8 @@ void HandleMemWrite(uint8_t* pBuf)
 
 void HandleSave(uint8_t* pBuf)
 {
-
+  LOG << "Save";
+  EEPROM.put(0, memBuffer);
 }
 
 void HandleReboot(uint8_t* buf)
@@ -685,6 +686,8 @@ void setup()
 
   /*Startup EEPROM*/
   EEPROM.begin(MEM_DEVICE_SIZE);
+  EEPROM.get(0, memBuffer);
+  
   /*Disable persistant WiFi info. The code handles that*/
   WiFi.persistent(false);
 
