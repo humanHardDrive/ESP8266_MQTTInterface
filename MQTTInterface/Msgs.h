@@ -68,6 +68,7 @@ enum NETWORK_STATE_CHANGE_TYPE
 
 struct MemPage
 {
+  uint16_t addr;
   uint8_t nCount;
   uint8_t block[MEM_PAGE_SIZE];
 };

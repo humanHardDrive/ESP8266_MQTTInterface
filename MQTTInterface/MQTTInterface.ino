@@ -303,17 +303,52 @@ void HandleVersion(uint8_t* buf)
 
 void HandleMemRead(uint8_t* pBuf)
 {
-  
+  MemPage* pReq = (MemPage*)pBuf;
+  MemPage rsp;
+
+  /*Limit the write size*/
+  if (pReq->nCount > MEM_PAGE_SIZE)
+    pReq->nCount = MEM_PAGE_SIZE;
+
+  /*Don't allow reads outside of the memory space*/
+  if (pReq->addr >= MEM_DEVICE_SIZE)
+    return;
+
+  /*Only allow reading within the memory space*/
+  /*No wrapping*/
+  if ((pReq->addr + pReq->nCount) >= MEM_DEVICE_SIZE)
+    pReq->nCount = MEM_DEVICE_SIZE - pReq->addr;
+
+  rsp.nCount = pReq->nCount;
+  rsp.addr = pReq->addr;
+  memcpy(rsp.block, memBuffer + pReq->addr, pReq->nCount);
+
+  serInterface.sendCommand(MEM_READ, &rsp, sizeof(MemPage));
 }
 
 void HandleMemWrite(uint8_t* pBuf)
 {
-  
+  MemPage* pPage = (MemPage*)pBuf;
+
+  /*Limit the write size*/
+  if (pPage->nCount > MEM_PAGE_SIZE)
+    pPage->nCount = MEM_PAGE_SIZE;
+
+  /*Don't allow writes outside of the memory space*/
+  if (pPage->addr >= MEM_DEVICE_SIZE)
+    return;
+
+  /*Only allow writing within the memory space*/
+  /*No wrapping*/
+  if ((pPage->addr + pPage->nCount) >= MEM_DEVICE_SIZE)
+    pPage->nCount = MEM_DEVICE_SIZE - pPage->addr;
+
+  memcpy(memBuffer + pPage->addr, pPage->block, pPage->nCount);
 }
 
 void HandleSave(uint8_t* pBuf)
 {
-  
+
 }
 
 void HandleReboot(uint8_t* buf)
@@ -329,7 +364,7 @@ void HandleSetAPInfo(uint8_t* buf)
 
 void HandleGetAPInfo(uint8_t* buf)
 {
-  
+
 }
 
 void HandleConnectToAP(uint8_t* buf)
@@ -381,12 +416,12 @@ void HandleGetIP(uint8_t* buf)
 
 void HandleSetServerInfo(uint8_t* pBuf)
 {
-  
+
 }
 
 void HandleGetServerInfo(uint8_t* pBuf)
 {
-  
+
 }
 
 void HandleConnectToServer(uint8_t* buf)
@@ -472,12 +507,12 @@ void SetupMessageHandlers()
 {
   serInterface.setCommandHandler(MEM_READ, HandleMemRead);
   serInterface.setCommandHandler(MEM_READ, HandleMemWrite);
-  
+
   serInterface.setCommandHandler(SAVE, HandleSave);
   serInterface.setCommandHandler(REBOOT, HandleReboot);
-  
+
   serInterface.setCommandHandler(GET_DEVICE_NAME, HandleGetDeviceName);
-  
+
   serInterface.setCommandHandler(SET_AP_INFO, HandleSetAPInfo);
   serInterface.setCommandHandler(GET_AP_INFO, HandleGetAPInfo);
 
