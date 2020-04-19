@@ -22,7 +22,7 @@
 #define MAX_SUBS                  8
 #define MAX_PUBS                  8
 
-#define MEM_DEVICE_SIZE           1024
+#define MEM_DEVICE_SIZE           2048
 
 /*Send log statements out of the programming port*/
 //#define PROG_DBG
@@ -291,6 +291,47 @@ void HandleGetDeviceName(uint8_t* buf)
   serInterface.sendCommand(GET_DEVICE_NAME, sDeviceName, strlen(sDeviceName));
 }
 
+void HandleVersion(uint8_t* buf)
+{
+  uint16_t verBuf[2];
+  LOG << "HandleVersion";
+
+  verBuf[0] = VERSION_MAJOR;
+  verBuf[1] = VERSION_MINOR;
+  serInterface.sendCommand(VERSION, verBuf, sizeof(verBuf));
+}
+
+void HandleMemRead(uint8_t* pBuf)
+{
+  
+}
+
+void HandleMemWrite(uint8_t* pBuf)
+{
+  
+}
+
+void HandleSave(uint8_t* pBuf)
+{
+  
+}
+
+void HandleReboot(uint8_t* buf)
+{
+  LOG << "HandleReboot";
+  reboot();
+}
+
+void HandleSetAPInfo(uint8_t* buf)
+{
+
+}
+
+void HandleGetAPInfo(uint8_t* buf)
+{
+  
+}
+
 void HandleConnectToAP(uint8_t* buf)
 {
   LOG << "HandleConnectToAP";
@@ -330,16 +371,22 @@ void HandleStopNetworkHelper(uint8_t* buf)
   helper.stop();
 }
 
-void HandleGetConnectionState(uint8_t* buf)
+void HandleGetIP(uint8_t* buf)
 {
-  LOG << "HandleGetConnectionState";
-  serInterface.sendCommand(GET_CONNECTION_STATE, &networkState, sizeof(networkState));
+  uint32_t byteIP = WiFi.localIP();
+  LOG << "HandleGetIP";
+
+  serInterface.sendCommand(GET_IP, &byteIP, sizeof(byteIP));
 }
 
-void HandleReboot(uint8_t* buf)
+void HandleSetServerInfo(uint8_t* pBuf)
 {
-  LOG << "HandleReboot";
-  reboot();
+  
+}
+
+void HandleGetServerInfo(uint8_t* pBuf)
+{
+  
 }
 
 void HandleConnectToServer(uint8_t* buf)
@@ -354,14 +401,10 @@ void HandleDisconnectFromServer(uint8_t* buf)
   DisconnectFromServer();
 }
 
-void HandleVersion(uint8_t* buf)
+void HandleGetConnectionInfo(uint8_t* buf)
 {
-  uint16_t verBuf[2];
-  LOG << "HandleVersion";
-
-  verBuf[0] = VERSION_MAJOR;
-  verBuf[1] = VERSION_MINOR;
-  serInterface.sendCommand(VERSION, verBuf, sizeof(verBuf));
+  LOG << "HandleGetConnectionInfo";
+  serInterface.sendCommand(GET_CONNECTION_INFO, &networkState, sizeof(networkState));
 }
 
 void HandleTime(uint8_t* buf)
@@ -383,14 +426,6 @@ void HandleSetTimeOffset(uint8_t* buf)
   LOG << "HandleSetTimeOffset";
 
   timeClient.setTimeOffset(nTimeOffset);
-}
-
-void HandleGetIP(uint8_t* buf)
-{
-  uint32_t byteIP = WiFi.localIP();
-  LOG << "HandleGetIP";
-
-  serInterface.sendCommand(GET_IP, &byteIP, sizeof(byteIP));
 }
 
 void HandleSetSubAlias(uint8_t* buf)
@@ -425,22 +460,6 @@ void HandleSetPubAlias(uint8_t* buf)
     LOG << "Invalid index " << nIndex;
 }
 
-void HandleClearPubList(uint8_t* buf)
-{
-  LOG << "HandleClearPubList";
-
-  memset(sPubList, 0, sizeof(sPubList));
-  memset(sPubAlias, 0, sizeof(sPubAlias));
-}
-
-void HandleClearSubList(uint8_t* buf)
-{
-  LOG << "HandleClearSubList";
-
-  memset(sSubList, 0, sizeof(sSubList));
-  memset(sSubAlias, 0, sizeof(sSubAlias));
-}
-
 void HandlePubInfo(uint8_t* buf)
 {
   if (serverState == CONNECTED_TO_AP)
@@ -451,12 +470,16 @@ void HandlePubInfo(uint8_t* buf)
 
 void SetupMessageHandlers()
 {
-  serInterface.setCommandHandler(SET_NETWORK_NAME, HandleSetNetworkName);
-  serInterface.setCommandHandler(SET_NETWORK_PASS, HandleSetNetworkPass);
-
-  serInterface.setCommandHandler(GET_NETWORK_NAME, HandleGetNetworkName);
-  serInterface.setCommandHandler(GET_NETWORK_PASS, HandleGetNetworkPass);
+  serInterface.setCommandHandler(MEM_READ, HandleMemRead);
+  serInterface.setCommandHandler(MEM_READ, HandleMemWrite);
+  
+  serInterface.setCommandHandler(SAVE, HandleSave);
+  serInterface.setCommandHandler(REBOOT, HandleReboot);
+  
   serInterface.setCommandHandler(GET_DEVICE_NAME, HandleGetDeviceName);
+  
+  serInterface.setCommandHandler(SET_AP_INFO, HandleSetAPInfo);
+  serInterface.setCommandHandler(GET_AP_INFO, HandleGetAPInfo);
 
   serInterface.setCommandHandler(CONNECT_TO_AP, HandleConnectToAP);
   serInterface.setCommandHandler(DISCONNECT_FROM_AP, HandleDisconnectFromAP);
@@ -467,38 +490,24 @@ void SetupMessageHandlers()
   serInterface.setCommandHandler(START_NETWORK_HELPER, HandleStartNetworkHelper);
   serInterface.setCommandHandler(STOP_NETWORK_HELPER, HandleStopNetworkHelper);
 
-  serInterface.setCommandHandler(SAVE, HandleSave);
-
-  serInterface.setCommandHandler(GET_CONNECTION_INFO, HandleGetConnectionState);
-
-  serInterface.setCommandHandler(REBOOT, HandleReboot);
-
-  serInterface.setCommandHandler(SET_SERVER_ADDR, HandleSetServerAddr);
-  serInterface.setCommandHandler(SET_SERVER_PORT, HandleSetServerPort);
-  serInterface.setCommandHandler(SET_USER_NAME, HandleSetUserName);
-  serInterface.setCommandHandler(SET_USER_PASS, HandleSetUserPass);
-
-  serInterface.setCommandHandler(GET_SERVER_ADDR, HandleGetServerAddr);
-  serInterface.setCommandHandler(GET_SERVER_PORT, HandleGetServerPort);
-  serInterface.setCommandHandler(GET_USER_NAME, HandleGetUserName);
-  serInterface.setCommandHandler(GET_USER_PASS, HandleGetUserPass);
+  serInterface.setCommandHandler(SET_SERVER_INFO, HandleSetServerInfo);
+  serInterface.setCommandHandler(GET_SERVER_INFO, HandleGetServerInfo);
 
   serInterface.setCommandHandler(CONNECT_TO_SERVER, HandleConnectToServer);
   serInterface.setCommandHandler(DISCONNECT_FROM_SERVER, HandleDisconnectFromServer);
+
+  serInterface.setCommandHandler(SET_SUB_ALIAS, HandleSetSubAlias);
+  serInterface.setCommandHandler(SET_PUB_ALIAS, HandleSetPubAlias);
+
+  serInterface.setCommandHandler(PUBLISH_INFO, HandlePubInfo);
 
   serInterface.setCommandHandler(VERSION, HandleVersion);
 
   serInterface.setCommandHandler(TIME, HandleTime);
   serInterface.setCommandHandler(SET_TIME_OFFSET, HandleSetTimeOffset);
 
+  serInterface.setCommandHandler(GET_CONNECTION_INFO, HandleGetConnectionInfo);
   serInterface.setCommandHandler(GET_IP, HandleGetIP);
-
-  serInterface.setCommandHandler(CLEAR_SUB_LIST, HandleClearSubList);
-  serInterface.setCommandHandler(SET_SUB_ALIAS, HandleSetSubAlias);
-  serInterface.setCommandHandler(CLEAR_PUB_LIST, HandleClearPubList);
-  serInterface.setCommandHandler(SET_PUB_ALIAS, HandleSetPubAlias);
-
-  serInterface.setCommandHandler(PUB_INFO, HandlePubInfo);
 }
 
 void MonitorNetworkStatus()
@@ -533,20 +542,6 @@ void MonitorNetworkStatus()
     {
       LOG << "Connection timeout";
       networkState = DISCONNECTED;
-    }
-  }
-
-  /*Do stuff when connected to AP*/
-  if (networkState == CONNECTED_TO_AP)
-  {
-    if ((millis() - nLastTimeRequest) > TIME_UPDATE_PERIOD)
-    {
-      if (!timeClient.update())
-      {
-        bConnectedToInternet = false;
-        LOG << "Couldn't get time from server";
-      }
-      nLastTimeRequest = millis();
     }
   }
 
@@ -654,7 +649,7 @@ void setup()
   delay(1000);
 
   /*Startup EEPROM*/
-  EEPROM.begin(sizeof(SAVE_INFO));
+  EEPROM.begin(MEM_DEVICE_SIZE);
   /*Disable persistant WiFi info. The code handles that*/
   WiFi.persistent(false);
 
