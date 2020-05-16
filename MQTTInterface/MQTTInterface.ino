@@ -585,7 +585,6 @@ void MonitorNetworkStatus()
   if (networkState != oldNetworkState)
   {
     LOG << "Connection status changed from " << oldNetworkState << " to " << networkState;
-    serInterface.sendCommand(NETWORK_STATE_CHANGE, &networkState, sizeof(networkState));
     oldNetworkState = networkState;
 
     if (networkState == DISCONNECTED)
@@ -648,7 +647,6 @@ void MonitorServerConnection()
     }
 
     LOG << "Server connection status changed from " << oldServerState << " to " << serverState;
-    serInterface.sendCommand(MQTT_STATE_CHANGE, &serverState, sizeof(serverState));
     oldServerState = serverState;
   }
 }
